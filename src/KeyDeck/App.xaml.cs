@@ -31,10 +31,35 @@ public partial class App : Application
 
     public static bool IsExiting { get; private set; }
 
+    private bool _hasMutex;
+
     private void OnAppStartup(object sender, StartupEventArgs e)
     {
-        _singleInstanceMutex = new Mutex(initiallyOwned: true, AppConstants.SingleInstanceMutexName, out var isOnlyInstance);
-        if (!isOnlyInstance)
+        bool isOnlyInstance;
+        try
+        {
+            _singleInstanceMutex = new Mutex(initiallyOwned: true, AppConstants.SingleInstanceMutexName, out isOnlyInstance);
+            _hasMutex = isOnlyInstance;
+        }
+        catch (AbandonedMutexException)
+        {
+            _hasMutex = true;
+            isOnlyInstance = true;
+        }
+
+        if (!_hasMutex && _singleInstanceMutex != null)
+        {
+            try
+            {
+                _hasMutex = _singleInstanceMutex.WaitOne(TimeSpan.Zero, true);
+            }
+            catch (AbandonedMutexException)
+            {
+                _hasMutex = true;
+            }
+        }
+
+        if (!_hasMutex)
         {
             MessageBox.Show(
                 $"{AppConstants.AppName} is already running in the background. Check your system tray.",
@@ -184,7 +209,17 @@ public partial class App : Application
 
     private void OnAppExit(object sender, ExitEventArgs e)
     {
-        _singleInstanceMutex?.ReleaseMutex();
+        if (_hasMutex && _singleInstanceMutex != null)
+        {
+            try
+            {
+                _singleInstanceMutex.ReleaseMutex();
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[App] Failed to release mutex: {ex.Message}");
+            }
+        }
         _singleInstanceMutex?.Dispose();
     }
 }

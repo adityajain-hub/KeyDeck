@@ -158,7 +158,29 @@ public sealed class TrayIconService : IDisposable
             var appIcoPath = System.IO.Path.Combine(AppContext.BaseDirectory, "app.ico");
             if (System.IO.File.Exists(appIcoPath))
             {
-                return new Icon(appIcoPath);
+                return new Icon(appIcoPath, 32, 32);
+            }
+
+            try
+            {
+                var resourceStream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/app.ico"));
+                if (resourceStream?.Stream != null)
+                {
+                    using (resourceStream.Stream)
+                    {
+                        return new Icon(resourceStream.Stream, 32, 32);
+                    }
+                }
+            }
+            catch
+            {
+                // Fall back to process icon extraction
+            }
+
+            if (!string.IsNullOrEmpty(Environment.ProcessPath))
+            {
+                var exeIcon = Icon.ExtractAssociatedIcon(Environment.ProcessPath);
+                if (exeIcon != null) return exeIcon;
             }
 
             using (var bmp = new Bitmap(32, 32))
