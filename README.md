@@ -12,6 +12,10 @@
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" />
 </p>
 
+<p align="center">
+  <img src="assets/screenshot.png" alt="KeyDeck Application UI" width="750" />
+</p>
+
 ---
 
 ## 💡 Overview
