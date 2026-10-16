@@ -9,6 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>KeyDeck</RootNamespace>
     <AssemblyName>KeyDeck</AssemblyName>
+    <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
     <ApplicationManifest Condition="Exists('app.manifest')">app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NuGetAudit>false</NuGetAudit>
