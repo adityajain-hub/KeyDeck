@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="KeyDeck Application UI" width="750" />
+  <img src="assets/keydeck-preview.png" alt="KeyDeck Application UI" width="750" />
 </p>
 
 ---
