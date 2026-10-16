@@ -1,6 +1,8 @@
 ## Visual Studio & .NET
 bin/
 obj/
+publish/
+dist/
 *.user
 *.suo
 *.userosscache
