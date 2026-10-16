@@ -154,7 +154,7 @@ KeyDeck maps the physical 17-key numpad grid according to hardware scan codes:
 
 ### Clone & Build
 ```bash
-git clone https://github.com/your-username/KeyDeck.git
+git clone https://github.com/adityajain-hub/KeyDeck.git
 cd KeyDeck/src/KeyDeck
 dotnet build -c Release
 ```
