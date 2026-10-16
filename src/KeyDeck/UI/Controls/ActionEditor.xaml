@@ -1,0 +1,247 @@
+<UserControl x:Class="KeyDeck.UI.Controls.ActionEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:converters="clr-namespace:KeyDeck.UI.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="340">
+
+    <UserControl.Resources>
+        <converters:ActionTypeToDisplayNameConverter x:Key="ActionTypeConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1,0,0,0"
+            Padding="14">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <!-- Title Header -->
+                <TextBlock x:Name="HeaderTitle"
+                           Text="CONFIGURE: NUMPAD 7"
+                           FontSize="12"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           Margin="0,0,0,14" />
+
+                <!-- Action Type Selector -->
+                <TextBlock Text="Action Type"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
+                           Margin="0,0,0,5" />
+                <ComboBox x:Name="ActionTypeComboBox"
+                          Margin="0,0,0,14"
+                          SelectionChanged="OnActionTypeChanged" />
+
+                <!-- Action Label -->
+                <TextBlock Text="Display Label"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
+                           Margin="0,0,0,5" />
+                <TextBox x:Name="LabelTextBox"
+                         Margin="0,0,0,14"
+                         TextChanged="OnInputChanged" />
+
+                <!-- DYNAMIC CONFIG PANELS -->
+
+                <!-- 1. Launch App Panel -->
+                <StackPanel x:Name="LaunchAppPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Application Executable (.exe)"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="AppPathTextBox" Grid.Column="0" TextChanged="OnInputChanged" />
+                        <Button Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="OnBrowseAppClick" />
+                    </Grid>
+                    <TextBlock Text="Arguments (Optional)"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Margin="0,0,0,3" />
+                    <TextBox x:Name="AppArgsTextBox" TextChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 2. Open URL Panel -->
+                <StackPanel x:Name="OpenUrlPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Webpage URL"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <TextBox x:Name="UrlTextBox"
+                             ToolTip="e.g. https://github.com or google.com"
+                             TextChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 3. Open Folder Panel -->
+                <StackPanel x:Name="OpenFolderPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Folder Path"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="FolderPathTextBox" Grid.Column="0" TextChanged="OnInputChanged" />
+                        <Button Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="OnBrowseFolderClick" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- 4. Hotkey Panel -->
+                <StackPanel x:Name="HotkeyPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Keyboard Shortcut"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="HotkeyTextBox"
+                                 Grid.Column="0"
+                                 IsReadOnly="True"
+                                 Text="Click to record hotkey..."
+                                 PreviewKeyDown="OnHotkeyPreviewKeyDown"
+                                 GotFocus="OnHotkeyGotFocus"
+                                 LostFocus="OnHotkeyLostFocus"
+                                 Cursor="Hand" />
+                        <Button Grid.Column="1" Content="Clear" Margin="6,0,0,0" Click="OnClearHotkeyClick" />
+                    </Grid>
+                    <TextBlock Text="Focus box and press any key combination (e.g. Ctrl + Shift + M)"
+                               FontSize="10"
+                               Foreground="{DynamicResource SecondaryTextBrush}" />
+                </StackPanel>
+
+                <!-- 5. Run Script Panel -->
+                <StackPanel x:Name="RunScriptPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Script File (.ps1 / .bat / .cmd)"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ScriptPathTextBox" Grid.Column="0" TextChanged="OnInputChanged" />
+                        <Button Grid.Column="1" Content="Browse..." Margin="6,0,0,0" Click="OnBrowseScriptClick" />
+                    </Grid>
+                    <TextBlock Text="Arguments (Optional)"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               Margin="0,0,0,3" />
+                    <TextBox x:Name="ScriptArgsTextBox" TextChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 6. Media Control Panel -->
+                <StackPanel x:Name="MediaControlPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Media Command"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <ComboBox x:Name="MediaCommandComboBox" SelectionChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 7. System Action Panel -->
+                <StackPanel x:Name="SystemActionPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="System Command"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <ComboBox x:Name="SystemCommandComboBox" SelectionChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 8. Text Paste Panel -->
+                <StackPanel x:Name="TextPastePanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Text to Paste"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <TextBox x:Name="TextPasteTextBox"
+                             AcceptsReturn="True"
+                             Height="80"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             TextChanged="OnInputChanged" />
+                </StackPanel>
+
+                <!-- 9. Multi Action Panel -->
+                <StackPanel x:Name="MultiActionPanel" Visibility="Collapsed" Margin="0,0,0,14">
+                    <TextBlock Text="Chained Sub-Actions"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               Margin="0,0,0,5" />
+                    <ListBox x:Name="SubActionsListBox" Height="100" Margin="0,0,0,6" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="+ Add Sub-Action" Margin="0,0,3,0" Click="OnAddSubActionClick" />
+                        <Button Grid.Column="1" Content="- Remove" Margin="3,0,0,0" Click="OnRemoveSubActionClick" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Icon Settings -->
+                <TextBlock Text="Custom Icon"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource PrimaryTextBrush}"
+                           Margin="0,4,0,5" />
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="36" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0"
+                            Width="30" Height="30"
+                            Background="{DynamicResource InputBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="3"
+                            HorizontalAlignment="Left">
+                        <Image x:Name="IconPreview" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <Button Grid.Column="1" Content="Browse Icon..." Margin="6,0,4,0" Click="OnBrowseIconClick" />
+                    <Button Grid.Column="2" Content="Reset" Click="OnResetIconClick" />
+                </Grid>
+
+                <Separator Background="{DynamicResource BorderBrush}" Margin="0,0,0,16" />
+
+                <!-- Action Execution Buttons -->
+                <Button x:Name="TestActionButton"
+                        Content="▶ Test Action"
+                        Style="{DynamicResource AccentButton}"
+                        Height="32"
+                        Margin="0,0,0,8"
+                        Click="OnTestActionClick" />
+
+                <Button x:Name="ClearKeyButton"
+                        Content="🗑 Clear Key"
+                        Height="28"
+                        Click="OnClearKeyClick" />
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

@@ -1,0 +1,135 @@
+<Window x:Class="KeyDeck.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:KeyDeck.UI.Controls"
+        mc:Ignorable="d"
+        Title="KeyDeck — Numpad Macro Pad"
+        Height="680" Width="1050"
+        MinHeight="600" MinWidth="920"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBackgroundBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header bar -->
+            <RowDefinition Height="46" />
+            <!-- Main Three-Panel Workspace -->
+            <RowDefinition Height="*" />
+            <!-- Bottom Settings Bar -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Top Header Bar -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PanelBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16,0">
+            <Grid VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⌨️ KeyDeck"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource PrimaryTextBrush}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text=" — Turn your numpad into a stream deck"
+                               FontSize="12"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="8,2,0,0" />
+                </StackPanel>
+
+                <!-- Macro Master Toggle -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <CheckBox x:Name="MacroEnabledCheckBox"
+                              Content="Enable Macro Interception"
+                              IsChecked="True"
+                              VerticalAlignment="Center"
+                              Checked="OnMacroEnabledChanged"
+                              Unchecked="OnMacroEnabledChanged" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Three-Panel Layout -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- Left: Profile List (220px) -->
+                <ColumnDefinition Width="220" />
+                <!-- Center: Interactive Numpad Grid (*) -->
+                <ColumnDefinition Width="*" />
+                <!-- Right: Action Editor (340px) -->
+                <ColumnDefinition Width="340" />
+            </Grid.ColumnDefinitions>
+
+            <controls:ProfileListPanel x:Name="ProfilePanel" Grid.Column="0" />
+            <controls:NumpadGrid x:Name="KeyGrid" Grid.Column="1" />
+            <controls:ActionEditor x:Name="EditorPanel" Grid.Column="2" />
+        </Grid>
+
+        <!-- Bottom Settings Bar -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource PanelBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="16,10">
+            <WrapPanel VerticalAlignment="Center">
+                <!-- Startup -->
+                <CheckBox x:Name="StartOnBootCheckBox"
+                          Content="Start on Boot"
+                          Margin="0,0,18,0"
+                          VerticalAlignment="Center"
+                          Click="OnStartOnBootClicked" />
+
+                <CheckBox x:Name="StartMinimizedCheckBox"
+                          Content="Start Minimized to Tray"
+                          Margin="0,0,24,0"
+                          VerticalAlignment="Center"
+                          Click="OnStartMinimizedClicked" />
+
+                <!-- NumLock Mode -->
+                <TextBlock Text="Num Lock Mode:"
+                           FontSize="11"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,6,0" />
+                <ComboBox x:Name="NumLockModeComboBox"
+                          Width="130"
+                          Margin="0,0,24,0"
+                          VerticalAlignment="Center"
+                          SelectionChanged="OnNumLockModeChanged" />
+
+                <!-- HUD Mode -->
+                <TextBlock Text="HUD Overlay:"
+                           FontSize="11"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,6,0" />
+                <ComboBox x:Name="HudModeComboBox"
+                          Width="160"
+                          Margin="0,0,16,0"
+                          VerticalAlignment="Center"
+                          SelectionChanged="OnHudModeChanged" />
+
+                <!-- Theme -->
+                <TextBlock Text="Theme:"
+                           FontSize="11"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,6,0" />
+                <ComboBox x:Name="ThemeComboBox"
+                          Width="80"
+                          VerticalAlignment="Center"
+                          SelectionChanged="OnThemeChanged" />
+            </WrapPanel>
+        </Border>
+
+    </Grid>
+</Window>
