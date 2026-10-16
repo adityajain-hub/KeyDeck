@@ -155,6 +155,12 @@ public sealed class TrayIconService : IDisposable
     {
         try
         {
+            var appIcoPath = System.IO.Path.Combine(AppContext.BaseDirectory, "app.ico");
+            if (System.IO.File.Exists(appIcoPath))
+            {
+                return new Icon(appIcoPath);
+            }
+
             using (var bmp = new Bitmap(32, 32))
             {
                 using var g = Graphics.FromImage(bmp);

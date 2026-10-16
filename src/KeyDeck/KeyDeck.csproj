@@ -9,12 +9,19 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>KeyDeck</RootNamespace>
     <AssemblyName>KeyDeck</AssemblyName>
-    <ApplicationIcon>..\..\assets\app.ico</ApplicationIcon>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <ApplicationManifest Condition="Exists('app.manifest')">app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NuGetAudit>false</NuGetAudit>
     <NoWarn>$(NoWarn);NU1900</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+    <None Update="app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />

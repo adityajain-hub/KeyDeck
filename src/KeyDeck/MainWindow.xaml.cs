@@ -40,6 +40,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        try
+        {
+            var iconUri = new Uri("pack://application:,,,/app.ico", UriKind.Absolute);
+            Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
+        }
+        catch { }
+
         _configService   = configService  ?? throw new ArgumentNullException(nameof(configService));
         _settings        = settings       ?? throw new ArgumentNullException(nameof(settings));
         _profileManager  = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
