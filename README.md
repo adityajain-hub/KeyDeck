@@ -1,4 +1,8 @@
-# KeyDeck ⌨️🎛️
+<p align="center">
+  <img src="assets/keydeck-icon.png" alt="KeyDeck Icon" width="128" height="128" />
+</p>
+
+<h1 align="center">KeyDeck</h1>
 
 <p align="center">
   <strong>Transform your physical numpad into a powerful Stream Deck alternative whenever Num Lock is OFF.</strong>
@@ -6,6 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Release-v2.0-blue?style=flat-square" alt="Version 2.0" />
+  <img src="https://img.shields.io/badge/Executable-Single--File%20Standalone-0078D6?style=flat-square" alt="Standalone Executable" />
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white&style=flat-square" alt=".NET 8.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Platform: Windows" />
   <img src="https://img.shields.io/badge/UI-WPF%20XAML-00599C?style=flat-square" alt="WPF" />
@@ -17,6 +22,18 @@
 <p align="center">
   <img src="assets/keydeck-preview.png" alt="KeyDeck v2.0 Application Interface" width="800" />
 </p>
+
+---
+
+## ⚡ Instant Download & Quick Start (Zero Install)
+
+KeyDeck is pre-built as a self-contained, standalone single-file Windows executable with the .NET 8 desktop runtime and native dependencies compressed inside:
+
+1. **Download:** Get the pre-built **[`publish/KeyDeck.exe`](publish/KeyDeck.exe)** directly from this repository.
+2. **Run:** Double-click **`KeyDeck.exe`** to start immediately.
+   - **No .NET runtime or SDK installation needed.**
+   - Sits quietly in your Windows System Tray. Double-click the tray icon to open the configuration dashboard.
+   - Toggle **Num Lock OFF** on your keyboard to fire macros! Turn **Num Lock ON** anytime for normal calculator typing.
 
 ---
 
@@ -177,6 +194,12 @@ dotnet run --project src/KeyDeck/KeyDeck.csproj -c Release --no-build
 Or launch the compiled binary directly from:
 ```text
 src/KeyDeck/bin/Release/net8.0-windows/KeyDeck.exe
+```
+
+### 4. Package Standalone Single-File Release
+To bundle the full desktop runtime and create the compressed, zero-dependency executable in `publish/KeyDeck.exe`:
+```powershell
+.\build-release.ps1
 ```
 
 ---
