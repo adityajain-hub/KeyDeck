@@ -10,24 +10,20 @@ namespace KeyDeck.Core;
 /// <summary>
 /// Executes all 9 macro action types asynchronously without blocking the keyboard hook thread.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class is registered as a singleton and implements <see cref="IActionExecutor"/>
-/// so consumers never depend on the concrete type.
-/// </para>
-/// <para>
-/// <b>Stuck-key safety:</b> The hotkey path sends the press phase and release phase as two
-/// separate <c>SendInput</c> calls with the release inside a <see langword="finally"/> block,
-/// ensuring modifier keys (Ctrl, Alt, Shift, Win) are always released even if the target
-/// application crashes between the two phases.
-/// </para>
-/// <para>
-/// <b>URL security:</b> <c>OpenUrl</c> actions are validated to allow only <c>http://</c>
-/// and <c>https://</c> schemes, blocking <c>javascript:</c>, <c>file:</c>, and similar vectors.
-/// </para>
-/// </remarks>
 public sealed class ActionExecutor : IActionExecutor
 {
+    public IProfileManager? ProfileManager { get; set; }
+    private readonly KeyDeck.Core.Abstractions.IEnvironmentService _environmentService;
+
+    public ActionExecutor(IProfileManager? profileManager = null, KeyDeck.Core.Abstractions.IEnvironmentService? environmentService = null)
+    {
+        ProfileManager = profileManager;
+        _environmentService = environmentService ?? KeyDeck.Infrastructure.Services.EnvironmentService.Instance;
+    }
+    private const int HotkeyHoldDelayMs = 20;
+    private const int TextPasteChunkSize = 64;
+    private const int TextPasteChunkDelayMs = 5;
+
     // ── IActionExecutor ────────────────────────────────────────────────────
 
     /// <inheritdoc/>
@@ -55,7 +51,7 @@ public sealed class ActionExecutor : IActionExecutor
                     break;
 
                 case ActionType.Hotkey:
-                    ExecuteHotkey(action);
+                    await ExecuteHotkeyAsync(action).ConfigureAwait(false);
                     break;
 
                 case ActionType.RunScript:
@@ -67,15 +63,19 @@ public sealed class ActionExecutor : IActionExecutor
                     break;
 
                 case ActionType.SystemAction:
-                    ExecuteSystemAction(action.SystemCommand);
+                    await ExecuteSystemActionAsync(action.SystemCommand).ConfigureAwait(false);
                     break;
 
                 case ActionType.TextPaste:
-                    ExecuteTextPaste(action.TextToPaste);
+                    await ExecuteTextPasteAsync(action.TextToPaste).ConfigureAwait(false);
                     break;
 
                 case ActionType.MultiAction:
                     await ExecuteMultiActionAsync(action.SubActions).ConfigureAwait(false);
+                    break;
+
+                case ActionType.SwitchProfile:
+                    ExecuteSwitchProfile(action);
                     break;
 
                 default:
@@ -91,11 +91,7 @@ public sealed class ActionExecutor : IActionExecutor
 
     // ── Launch / Open ──────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Launches an application or opens a file via the Windows shell.
-    /// Resolves the working directory from the executable path when possible.
-    /// </summary>
-    private static void ExecuteLaunchApp(KeyAction action)
+    private void ExecuteLaunchApp(KeyAction action)
     {
         if (string.IsNullOrWhiteSpace(action.TargetPath))
         {
@@ -103,35 +99,42 @@ public sealed class ActionExecutor : IActionExecutor
             return;
         }
 
+        var expandedPath = _environmentService.ExpandEnvironmentVariables(action.TargetPath.Trim());
         var startInfo = new ProcessStartInfo
         {
-            FileName       = action.TargetPath,
-            Arguments      = action.Arguments ?? string.Empty,
+            FileName        = expandedPath,
+            Arguments       = action.Arguments ?? string.Empty,
             UseShellExecute = true
         };
 
         try
         {
-            var dir = Path.GetDirectoryName(action.TargetPath);
-            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+            var dir = Path.GetDirectoryName(expandedPath);
+            if (!string.IsNullOrEmpty(dir) && _environmentService.DirectoryExists(dir))
             {
                 startInfo.WorkingDirectory = dir;
             }
         }
         catch (Exception ex)
         {
-            // Non-fatal — working directory is optional.
             Trace.WriteLine($"[ActionExecutor] LaunchApp: could not resolve working directory: {ex.Message}");
         }
 
-        Process.Start(startInfo);
+        try
+        {
+            Process.Start(startInfo);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ActionExecutor] LaunchApp direct start failed ({ex.Message}), trying ShellExecute fallback...");
+            var ret = NativeMethods.ShellExecute(IntPtr.Zero, "open", expandedPath, action.Arguments, startInfo.WorkingDirectory, 1);
+            if ((long)ret <= 32)
+            {
+                throw;
+            }
+        }
     }
 
-    /// <summary>
-    /// Opens a URL in the default browser.
-    /// Prepends <c>https://</c> when no scheme is present and validates that only
-    /// <c>http</c> or <c>https</c> schemes are forwarded to the shell.
-    /// </summary>
     private static void ExecuteOpenUrl(KeyAction action)
     {
         if (string.IsNullOrWhiteSpace(action.TargetPath))
@@ -147,8 +150,6 @@ public sealed class ActionExecutor : IActionExecutor
             url = "https://" + url;
         }
 
-        // Security: only http/https schemes are forwarded to the shell.
-        // Blocks javascript:, file:, ftp:, and other injection vectors.
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
@@ -156,14 +157,29 @@ public sealed class ActionExecutor : IActionExecutor
             return;
         }
 
-        Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = uri.AbsoluteUri, UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ActionExecutor] OpenUrl Process.Start failed ({ex.Message}), trying ShellExecute fallback...");
+            var ret = NativeMethods.ShellExecute(IntPtr.Zero, "open", uri.AbsoluteUri, null, null, 1);
+            if ((long)ret <= 32)
+            {
+                var escapedUrl = uri.AbsoluteUri.Replace("&", "^&");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c start \"\" \"{escapedUrl}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                });
+            }
+        }
     }
 
-    /// <summary>
-    /// Opens a folder in Windows Explorer.
-    /// Expands any <c>%ENVIRONMENT%</c> variables in the path before resolving.
-    /// </summary>
-    private static void ExecuteOpenFolder(KeyAction action)
+    private void ExecuteOpenFolder(KeyAction action)
     {
         if (string.IsNullOrWhiteSpace(action.TargetPath))
         {
@@ -171,8 +187,8 @@ public sealed class ActionExecutor : IActionExecutor
             return;
         }
 
-        var folder = Environment.ExpandEnvironmentVariables(action.TargetPath);
-        if (!Directory.Exists(folder))
+        var folder = _environmentService.ExpandEnvironmentVariables(action.TargetPath.Trim());
+        if (!_environmentService.DirectoryExists(folder))
         {
             Trace.WriteLine($"[ActionExecutor] OpenFolder: directory does not exist: '{folder}'.");
             return;
@@ -189,12 +205,10 @@ public sealed class ActionExecutor : IActionExecutor
     // ── Hotkey ─────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Synthesizes a key chord via <c>SendInput</c>.
-    /// The press and release phases are sent as separate calls with the
-    /// release inside a <see langword="finally"/> block, guaranteeing that
-    /// modifier keys are always released even if an exception occurs mid-execution.
+    /// Synthesizes a key chord via <c>SendInput</c> with a brief hold delay so games,
+    /// Electron apps, and global hotkey hooks reliably register the chord before release.
     /// </summary>
-    private static void ExecuteHotkey(KeyAction action)
+    private static async Task ExecuteHotkeyAsync(KeyAction action)
     {
         if (action.HotkeyVirtualKeys.Count == 0)
         {
@@ -203,8 +217,8 @@ public sealed class ActionExecutor : IActionExecutor
         }
 
         var keys = action.HotkeyVirtualKeys;
+        var inputSize = Marshal.SizeOf<NativeMethods.INPUT>();
 
-        // Build press-phase array
         var pressInputs = new NativeMethods.INPUT[keys.Count];
         for (var i = 0; i < keys.Count; i++)
         {
@@ -218,7 +232,6 @@ public sealed class ActionExecutor : IActionExecutor
             };
         }
 
-        // Build release-phase array (reverse order)
         var releaseInputs = new NativeMethods.INPUT[keys.Count];
         for (var i = 0; i < keys.Count; i++)
         {
@@ -232,25 +245,20 @@ public sealed class ActionExecutor : IActionExecutor
             };
         }
 
-        // Press phase
-        NativeMethods.SendInput((uint)pressInputs.Length, pressInputs, Marshal.SizeOf<NativeMethods.INPUT>());
-
-        // Release phase is always executed — even if the application throws between
-        // the press and release, modifier keys will not remain stuck.
-        try { /* intentionally empty */ }
+        try
+        {
+            NativeMethods.SendInput((uint)pressInputs.Length, pressInputs, inputSize);
+            await Task.Delay(HotkeyHoldDelayMs).ConfigureAwait(false);
+        }
         finally
         {
-            NativeMethods.SendInput((uint)releaseInputs.Length, releaseInputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            NativeMethods.SendInput((uint)releaseInputs.Length, releaseInputs, inputSize);
         }
     }
 
     // ── Script / RunScript ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Runs a script file. Supports <c>.ps1</c>, <c>.bat</c>, <c>.cmd</c>,
-    /// and any other file type (opened via shell association).
-    /// </summary>
-    private static void ExecuteRunScript(KeyAction action)
+    private void ExecuteRunScript(KeyAction action)
     {
         if (string.IsNullOrWhiteSpace(action.TargetPath))
         {
@@ -258,30 +266,34 @@ public sealed class ActionExecutor : IActionExecutor
             return;
         }
 
-        var scriptPath = Environment.ExpandEnvironmentVariables(action.TargetPath);
+        var scriptPath = _environmentService.ExpandEnvironmentVariables(action.TargetPath.Trim());
         var ext        = Path.GetExtension(scriptPath).ToLowerInvariant();
+        var scriptDir  = Path.GetDirectoryName(scriptPath) ?? string.Empty;
 
         ProcessStartInfo startInfo = ext switch
         {
             ".ps1" => new ProcessStartInfo
             {
-                FileName        = "powershell.exe",
-                Arguments       = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" {action.Arguments}",
-                UseShellExecute = false,
-                CreateNoWindow  = true
+                FileName         = "powershell.exe",
+                Arguments        = $"-NoProfile -ExecutionPolicy Bypass -File \"{scriptPath}\" {action.Arguments}",
+                WorkingDirectory = _environmentService.DirectoryExists(scriptDir) ? scriptDir : string.Empty,
+                UseShellExecute  = false,
+                CreateNoWindow   = true
             },
             ".bat" or ".cmd" => new ProcessStartInfo
             {
-                FileName        = "cmd.exe",
-                Arguments       = $"/c \"\"{scriptPath}\" {action.Arguments}\"",
-                UseShellExecute = false,
-                CreateNoWindow  = true
+                FileName         = "cmd.exe",
+                Arguments        = $"/c \"\"{scriptPath}\" {action.Arguments}\"",
+                WorkingDirectory = _environmentService.DirectoryExists(scriptDir) ? scriptDir : string.Empty,
+                UseShellExecute  = false,
+                CreateNoWindow   = true
             },
             _ => new ProcessStartInfo
             {
-                FileName        = scriptPath,
-                Arguments       = action.Arguments ?? string.Empty,
-                UseShellExecute = true
+                FileName         = scriptPath,
+                Arguments        = action.Arguments ?? string.Empty,
+                WorkingDirectory = _environmentService.DirectoryExists(scriptDir) ? scriptDir : string.Empty,
+                UseShellExecute  = true
             }
         };
 
@@ -290,7 +302,6 @@ public sealed class ActionExecutor : IActionExecutor
 
     // ── Media ──────────────────────────────────────────────────────────────
 
-    /// <summary>Sends a single hardware-level media key event.</summary>
     private static void ExecuteMediaControl(MediaCommand cmd)
     {
         int vk = cmd switch
@@ -317,10 +328,7 @@ public sealed class ActionExecutor : IActionExecutor
 
     // ── System actions ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes a Windows system command such as lock, sleep, screenshot, or minimize all.
-    /// </summary>
-    private static void ExecuteSystemAction(SystemCommand cmd)
+    private static async Task ExecuteSystemActionAsync(SystemCommand cmd)
     {
         switch (cmd)
         {
@@ -329,7 +337,9 @@ public sealed class ActionExecutor : IActionExecutor
                 break;
 
             case SystemCommand.Sleep:
-                NativeMethods.SetSuspendState(bHibernate: false, bForce: true, bWakeupEventsDisabled: true);
+                // bForce: false allows applications to respond to suspend queries cleanly;
+                // bWakeupEventsDisabled: false preserves user wake timers and alarms.
+                NativeMethods.SetSuspendState(bHibernate: false, bForce: false, bWakeupEventsDisabled: false);
                 break;
 
             case SystemCommand.EmptyRecycleBin:
@@ -338,8 +348,7 @@ public sealed class ActionExecutor : IActionExecutor
                 break;
 
             case SystemCommand.TakeScreenshot:
-                // Win + Shift + S → Windows Snipping Tool overlay
-                ExecuteHotkey(new KeyAction
+                await ExecuteHotkeyAsync(new KeyAction
                 {
                     HotkeyVirtualKeys = new List<int>
                     {
@@ -347,19 +356,18 @@ public sealed class ActionExecutor : IActionExecutor
                         NativeMethods.VK_SHIFT,
                         0x53 // 'S'
                     }
-                });
+                }).ConfigureAwait(false);
                 break;
 
             case SystemCommand.MinimizeAll:
-                // Win + D → toggle show desktop
-                ExecuteHotkey(new KeyAction
+                await ExecuteHotkeyAsync(new KeyAction
                 {
                     HotkeyVirtualKeys = new List<int>
                     {
                         NativeMethods.VK_LWIN,
                         0x44 // 'D'
                     }
-                });
+                }).ConfigureAwait(false);
                 break;
 
             default:
@@ -371,11 +379,10 @@ public sealed class ActionExecutor : IActionExecutor
     // ── Text paste ─────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Types <paramref name="text"/> into the focused window using Unicode
-    /// <c>KEYEVENTF_UNICODE</c> input events. Newline characters are sent
-    /// as <c>VK_RETURN</c> key events for maximum compatibility.
+    /// Emits <paramref name="text"/> into the focused window using <c>KEYEVENTF_UNICODE</c>
+    /// in bounded chunks so target window input queues do not overflow on large snippets.
     /// </summary>
-    private static void ExecuteTextPaste(string? text)
+    private static async Task ExecuteTextPasteAsync(string? text)
     {
         if (string.IsNullOrEmpty(text))
         {
@@ -383,18 +390,19 @@ public sealed class ActionExecutor : IActionExecutor
             return;
         }
 
-        var inputs = new List<NativeMethods.INPUT>(capacity: text.Length * 2);
+        var inputs = new List<NativeMethods.INPUT>(capacity: Math.Min(text.Length * 2, TextPasteChunkSize * 2));
+        var inputSize = Marshal.SizeOf<NativeMethods.INPUT>();
 
         for (var i = 0; i < text.Length; i++)
         {
             var c = text[i];
 
-            // Normalize Windows-style CRLF to a single newline
+            // Normalize CRLF to a single newline
             if (c == '\r')
             {
                 if (i + 1 < text.Length && text[i + 1] == '\n')
                 {
-                    i++; // consume '\n'
+                    i++;
                 }
                 c = '\n';
             }
@@ -417,17 +425,48 @@ public sealed class ActionExecutor : IActionExecutor
                 inputs.Add(down);
                 inputs.Add(up);
             }
+
+            if (inputs.Count >= TextPasteChunkSize * 2)
+            {
+                var chunk = inputs.ToArray();
+                NativeMethods.SendInput((uint)chunk.Length, chunk, inputSize);
+                inputs.Clear();
+                await Task.Delay(TextPasteChunkDelayMs).ConfigureAwait(false);
+            }
         }
 
-        var arr = inputs.ToArray();
-        NativeMethods.SendInput((uint)arr.Length, arr, Marshal.SizeOf<NativeMethods.INPUT>());
+        if (inputs.Count > 0)
+        {
+            var remaining = inputs.ToArray();
+            NativeMethods.SendInput((uint)remaining.Length, remaining, inputSize);
+        }
+    }
+
+    // ── SwitchProfile ──────────────────────────────────────────────────────
+
+    private void ExecuteSwitchProfile(KeyAction action)
+    {
+        var profileId = !string.IsNullOrWhiteSpace(action.TargetProfileId)
+            ? action.TargetProfileId
+            : action.TargetPath;
+
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            Trace.WriteLine("[ActionExecutor] SwitchProfile: TargetProfileId is empty; no-op.");
+            return;
+        }
+
+        if (ProfileManager == null)
+        {
+            Trace.WriteLine("[ActionExecutor] SwitchProfile: ProfileManager is not attached.");
+            return;
+        }
+
+        ProfileManager.SetActiveProfile(profileId);
     }
 
     // ── MultiAction ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes a sequence of sub-actions in order, with an optional per-action delay.
-    /// </summary>
     private async Task ExecuteMultiActionAsync(List<KeyAction> subActions)
     {
         foreach (var sub in subActions)
@@ -442,13 +481,6 @@ public sealed class ActionExecutor : IActionExecutor
 
     // ── Shared helpers ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Sends a single key-down followed by key-up event pair.
-    /// </summary>
-    /// <param name="vk">Virtual key code.</param>
-    /// <param name="isExtended">
-    /// <see langword="true"/> for extended keys (media, Win, etc.).
-    /// </param>
     private static void SendSingleKey(int vk, bool isExtended = false)
     {
         var flags  = isExtended ? NativeMethods.KEYEVENTF_EXTENDEDKEY : 0u;
@@ -474,12 +506,28 @@ public sealed class ActionExecutor : IActionExecutor
     }
 
     /// <summary>
-    /// Returns <see langword="true"/> for virtual keys that require the extended-key flag
-    /// in their <c>KEYBDINPUT.dwFlags</c> field.
+    /// Returns <see langword="true"/> for virtual keys that require the <c>KEYEVENTF_EXTENDEDKEY</c>
+    /// flag in <c>KEYBDINPUT.dwFlags</c> so Win32 apps and games distinguish them from numpad keys.
     /// </summary>
-    private static bool IsExtendedKey(int vk) =>
+    public static bool IsExtendedKey(int vk) =>
         vk is NativeMethods.VK_LWIN
             or NativeMethods.VK_RWIN
+            or NativeMethods.VK_RCONTROL
+            or NativeMethods.VK_RMENU
+            or NativeMethods.VK_INSERT
+            or NativeMethods.VK_DELETE
+            or NativeMethods.VK_HOME
+            or NativeMethods.VK_END
+            or NativeMethods.VK_PRIOR
+            or NativeMethods.VK_NEXT
+            or NativeMethods.VK_LEFT
+            or NativeMethods.VK_UP
+            or NativeMethods.VK_RIGHT
+            or NativeMethods.VK_DOWN
+            or NativeMethods.VK_SNAPSHOT
+            or NativeMethods.VK_DIVIDE
+            or NativeMethods.VK_CANCEL
+            or NativeMethods.VK_NUMLOCK
             or NativeMethods.VK_MEDIA_PLAY_PAUSE
             or NativeMethods.VK_MEDIA_NEXT_TRACK
             or NativeMethods.VK_MEDIA_PREV_TRACK

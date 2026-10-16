@@ -25,9 +25,21 @@ public class AppSettings
     [JsonPropertyName("hudOpacity")]
     public double HudOpacity { get; set; } = 0.85;
 
+    [JsonPropertyName("hudLeft")]
+    public double? HudLeft { get; set; } = null;
+
+    [JsonPropertyName("hudTop")]
+    public double? HudTop { get; set; } = null;
+
+    [JsonPropertyName("isHudLocked")]
+    public bool IsHudLocked { get; set; } = true;
+
     [JsonPropertyName("theme")]
     public AppTheme Theme { get; set; } = AppTheme.Dark;
 
     [JsonPropertyName("isMacroEnabled")]
     public bool IsMacroEnabled { get; set; } = true;
+
+    [JsonPropertyName("isAutoProfileSwitchEnabled")]
+    public bool IsAutoProfileSwitchEnabled { get; set; } = false;
 }

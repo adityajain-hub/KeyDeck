@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace KeyDeck.Core.Models;
 
 /// <summary>
-/// A named profile containing a full 16-key numpad mapping.
+/// A named profile containing a full 16-key numpad mapping and an optional linked executable for auto-switching.
 /// </summary>
 public class Profile
 {
@@ -12,6 +12,13 @@ public class Profile
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional executable name(s) (e.g., <c>Code.exe</c> or <c>obs64.exe</c>) that automatically
+    /// activate this profile when brought to the foreground while Auto-Profile Switching is enabled.
+    /// </summary>
+    [JsonPropertyName("linkedProcessName")]
+    public string? LinkedProcessName { get; set; }
 
     [JsonPropertyName("bindings")]
     public Dictionary<NumpadKeyId, KeyAction> Bindings { get; set; } = new();
@@ -23,10 +30,6 @@ public class Profile
         Name = name;
     }
 
-    /// <summary>
-    /// Gets the action assigned to a given key, or a default empty action if none exists.
-    /// This method is a pure read and does not mutate the bindings collection.
-    /// </summary>
     public KeyAction GetAction(NumpadKeyId keyId)
     {
         if (Bindings.TryGetValue(keyId, out var action))
@@ -37,23 +40,18 @@ public class Profile
         return new KeyAction { Type = ActionType.None };
     }
 
-    /// <summary>
-    /// Assigns or updates the action for a given key.
-    /// </summary>
     public void SetAction(NumpadKeyId keyId, KeyAction action)
     {
         Bindings[keyId] = action;
     }
 
-    /// <summary>
-    /// Deep clones the profile with a fresh unique ID.
-    /// </summary>
     public Profile Clone(string newName)
     {
         var cloned = new Profile
         {
             Id = Guid.NewGuid().ToString(),
-            Name = newName
+            Name = newName,
+            LinkedProcessName = LinkedProcessName
         };
 
         foreach (var kvp in Bindings)

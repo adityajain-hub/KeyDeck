@@ -1,4 +1,5 @@
 using System.Timers;
+using KeyDeck.Core.Abstractions;
 using KeyDeck.Infrastructure.Config;
 using KeyDeck.Platform.Win32;
 using Timer = System.Timers.Timer;
@@ -8,7 +9,7 @@ namespace KeyDeck.Core;
 /// <summary>
 /// Monitors Windows Num Lock hardware state and broadcasts changes.
 /// </summary>
-public sealed class NumLockMonitor : IDisposable
+public sealed class NumLockMonitor : INumLockMonitor
 {
     private readonly Timer _pollTimer;
     private bool _lastState;

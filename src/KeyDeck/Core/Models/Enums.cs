@@ -37,7 +37,8 @@ public enum ActionType
     MediaControl = 6,
     SystemAction = 7,
     TextPaste = 8,
-    MultiAction = 9
+    MultiAction = 9,
+    SwitchProfile = 10
 }
 
 /// <summary>

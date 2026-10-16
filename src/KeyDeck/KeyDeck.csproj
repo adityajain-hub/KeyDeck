@@ -11,6 +11,8 @@
     <AssemblyName>KeyDeck</AssemblyName>
     <ApplicationManifest Condition="Exists('app.manifest')">app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NuGetAudit>false</NuGetAudit>
+    <NoWarn>$(NoWarn);NU1900</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

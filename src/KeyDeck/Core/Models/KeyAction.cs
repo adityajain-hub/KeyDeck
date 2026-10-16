@@ -37,6 +37,9 @@ public class KeyAction
     [JsonPropertyName("textToPaste")]
     public string? TextToPaste { get; set; }
 
+    [JsonPropertyName("targetProfileId")]
+    public string? TargetProfileId { get; set; }
+
     [JsonPropertyName("delayMs")]
     public int DelayMs { get; set; } = 100;
 
@@ -60,6 +63,7 @@ public class KeyAction
             MediaCommand = MediaCommand,
             SystemCommand = SystemCommand,
             TextToPaste = TextToPaste,
+            TargetProfileId = TargetProfileId,
             DelayMs = DelayMs,
             SubActions = SubActions.Select(s => s.Clone()).ToList()
         };

@@ -1,23 +1,14 @@
 using System.Diagnostics;
+using System.IO;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 
 namespace KeyDeck.Core;
 
 /// <summary>
-/// Manages the collection of user profiles, active profile selection, and
-/// key-binding modifications for the active profile.
+/// Manages the collection of user profiles, active profile selection, per-app auto-switching,
+/// and key-binding modifications for the active profile.
 /// </summary>
-/// <remarks>
-/// <para>
-/// All mutating operations persist changes to disk via <see cref="IConfigService"/>
-/// immediately after updating in-memory state, so there is no separate "save" step.
-/// </para>
-/// <para>
-/// Events are raised synchronously on the thread that performed the mutation.
-/// UI subscribers must marshal to the dispatcher themselves if needed.
-/// </para>
-/// </remarks>
 public sealed class ProfileManager : IProfileManager
 {
     private readonly IConfigService _configService;
@@ -25,36 +16,16 @@ public sealed class ProfileManager : IProfileManager
     private readonly List<Profile>  _profiles;
     private Profile                 _activeProfile;
 
-    // ── IProfileManager — properties ───────────────────────────────────────
-
-    /// <inheritdoc/>
     public IReadOnlyList<Profile> Profiles => _profiles.AsReadOnly();
 
-    /// <inheritdoc/>
     public Profile ActiveProfile => _activeProfile;
 
-    // ── IProfileManager — events ───────────────────────────────────────────
-
-    /// <inheritdoc/>
     public event Action<Profile>? ActiveProfileChanged;
 
-    /// <inheritdoc/>
     public event Action? ProfilesListChanged;
 
-    /// <inheritdoc/>
     public event Action<NumpadKeyId, KeyAction>? BindingChanged;
 
-    // ── Constructor ────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Initialises the manager by loading all persisted profiles and restoring
-    /// the previously active profile (falling back to the first profile).
-    /// </summary>
-    /// <param name="configService">Persistence service for profiles and settings.</param>
-    /// <param name="settings">Global application settings that track the active profile ID.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="configService"/> or <paramref name="settings"/> is <see langword="null"/>.
-    /// </exception>
     public ProfileManager(IConfigService configService, AppSettings settings)
     {
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -65,15 +36,11 @@ public sealed class ProfileManager : IProfileManager
         var selected = _profiles.FirstOrDefault(p => p.Id == _settings.ActiveProfileId);
         _activeProfile = selected ?? _profiles.First();
 
-        // Ensure settings always reflect the resolved active profile.
         _settings.ActiveProfileId = _activeProfile.Id;
 
         Trace.WriteLine($"[ProfileManager] Loaded {_profiles.Count} profile(s); active = '{_activeProfile.Name}'.");
     }
 
-    // ── IProfileManager — profile switching ───────────────────────────────
-
-    /// <inheritdoc/>
     public void SetActiveProfile(string profileId)
     {
         var target = _profiles.FirstOrDefault(p => p.Id == profileId);
@@ -96,9 +63,6 @@ public sealed class ProfileManager : IProfileManager
         ActiveProfileChanged?.Invoke(_activeProfile);
     }
 
-    // ── IProfileManager — CRUD ─────────────────────────────────────────────
-
-    /// <inheritdoc/>
     public Profile CreateProfile(string name)
     {
         var cleanName = string.IsNullOrWhiteSpace(name) ? "New Profile" : name.Trim();
@@ -114,7 +78,6 @@ public sealed class ProfileManager : IProfileManager
         return profile;
     }
 
-    /// <inheritdoc/>
     public Profile DuplicateProfile(string sourceProfileId, string newName)
     {
         var source    = _profiles.FirstOrDefault(p => p.Id == sourceProfileId) ?? _activeProfile;
@@ -130,12 +93,11 @@ public sealed class ProfileManager : IProfileManager
         return duplicate;
     }
 
-    /// <inheritdoc/>
     public void RenameProfile(string profileId, string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))
         {
-            Trace.WriteLine($"[ProfileManager] RenameProfile: new name is empty; no-op.");
+            Trace.WriteLine("[ProfileManager] RenameProfile: new name is empty; no-op.");
             return;
         }
 
@@ -146,15 +108,14 @@ public sealed class ProfileManager : IProfileManager
             return;
         }
 
-        var oldName   = profile.Name;
-        profile.Name  = newName.Trim();
+        var oldName  = profile.Name;
+        profile.Name = newName.Trim();
         _configService.SaveProfile(profile);
 
         Trace.WriteLine($"[ProfileManager] Renamed '{oldName}' → '{profile.Name}'.");
         ProfilesListChanged?.Invoke();
     }
 
-    /// <inheritdoc/>
     public void DeleteProfile(string profileId)
     {
         if (_profiles.Count <= 1)
@@ -183,9 +144,6 @@ public sealed class ProfileManager : IProfileManager
         ProfilesListChanged?.Invoke();
     }
 
-    // ── IProfileManager — binding management ──────────────────────────────
-
-    /// <inheritdoc/>
     public void UpdateBinding(NumpadKeyId keyId, KeyAction action)
     {
         _activeProfile.SetAction(keyId, action);
@@ -195,10 +153,68 @@ public sealed class ProfileManager : IProfileManager
         BindingChanged?.Invoke(keyId, action);
     }
 
-    /// <inheritdoc/>
     public KeyAction GetActiveAction(NumpadKeyId keyId)
     {
-        // Pure read — if no binding exists, returns a default empty action without mutating bindings.
         return _activeProfile.GetAction(keyId);
+    }
+
+    public void SetProfileLinkedApp(string profileId, string? linkedProcessName)
+    {
+        var profile = _profiles.FirstOrDefault(p => p.Id == profileId);
+        if (profile == null)
+        {
+            return;
+        }
+
+        var normalized = string.IsNullOrWhiteSpace(linkedProcessName)
+            ? null
+            : Path.GetFileName(linkedProcessName.Trim());
+
+        if (string.Equals(profile.LinkedProcessName, normalized, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        profile.LinkedProcessName = normalized;
+        _configService.SaveProfile(profile);
+
+        Trace.WriteLine($"[ProfileManager] Linked process for '{profile.Name}' set to '{normalized ?? "(none)"}'.");
+        ProfilesListChanged?.Invoke();
+    }
+
+    public bool TryActivateProfileForProcess(string processName)
+    {
+        if (string.IsNullOrWhiteSpace(processName))
+        {
+            return false;
+        }
+
+        var targetExe = Path.GetFileName(processName.Trim());
+        var targetNoExt = Path.GetFileNameWithoutExtension(targetExe);
+
+        foreach (var profile in _profiles)
+        {
+            if (string.IsNullOrWhiteSpace(profile.LinkedProcessName))
+            {
+                continue;
+            }
+
+            // Support single process ("Code.exe") or comma/semicolon-separated list ("Code.exe; devenv.exe")
+            var candidates = profile.LinkedProcessName.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var rawCandidate in candidates)
+            {
+                var candidate = Path.GetFileName(rawCandidate.Trim());
+                var candidateNoExt = Path.GetFileNameWithoutExtension(candidate);
+
+                if (string.Equals(candidate, targetExe, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(candidateNoExt, targetNoExt, StringComparison.OrdinalIgnoreCase))
+                {
+                    SetActiveProfile(profile.Id);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

@@ -24,3 +24,6 @@ logs/
 Thumbs.db
 ehthumbs.db
 [Dd]esktop.ini
+
+# Internal change logs & scratch files
+CHANGES.md

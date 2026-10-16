@@ -2,45 +2,36 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using KeyDeck.Core;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 using KeyDeck.Infrastructure.Config;
-using KeyDeck.Platform.Win32;
 
 namespace KeyDeck.Infrastructure;
 
 /// <summary>
 /// Provides Windows system tray integration via <see cref="NotifyIcon"/> with an in-memory generated icon,
-/// dynamic profile-switching context menu, macro enable/disable toggle, and HUD visibility selection.
+/// dynamic profile-switching context menu, macro enable/disable toggle, and HUD visibility/lock controls.
+/// Fully synchronized with <see cref="IAppStateService"/>.
 /// </summary>
 public sealed class TrayIconService : IDisposable
 {
     private readonly NotifyIcon _notifyIcon;
+    private readonly IAppStateService _appStateService;
     private readonly IProfileManager _profileManager;
-    private readonly AppSettings _settings;
-    private readonly KeyInterceptor _keyInterceptor;
+    private readonly IKeyInterceptor _keyInterceptor;
     private readonly Action _openSettingsAction;
     private readonly Action _exitAppAction;
     private bool _isDisposed;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TrayIconService"/> class, creating
-    /// the system tray icon and binding change events to menu rebuilds.
-    /// </summary>
-    /// <param name="profileManager">The profile manager instance providing active profiles and profile switching.</param>
-    /// <param name="settings">The current application settings.</param>
-    /// <param name="keyInterceptor">The keyboard interceptor controlling macro state.</param>
-    /// <param name="openSettingsAction">Callback to display the main settings window.</param>
-    /// <param name="exitAppAction">Callback to initiate graceful application exit.</param>
-    public TrayIconService(IProfileManager profileManager,
-                           AppSettings settings,
-                           KeyInterceptor keyInterceptor,
-                           Action openSettingsAction,
-                           Action exitAppAction)
+    public TrayIconService(
+        IAppStateService appStateService,
+        IProfileManager profileManager,
+        IKeyInterceptor keyInterceptor,
+        Action openSettingsAction,
+        Action exitAppAction)
     {
+        _appStateService = appStateService ?? throw new ArgumentNullException(nameof(appStateService));
         _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _keyInterceptor = keyInterceptor ?? throw new ArgumentNullException(nameof(keyInterceptor));
         _openSettingsAction = openSettingsAction ?? throw new ArgumentNullException(nameof(openSettingsAction));
         _exitAppAction = exitAppAction ?? throw new ArgumentNullException(nameof(exitAppAction));
@@ -56,15 +47,11 @@ public sealed class TrayIconService : IDisposable
 
         RebuildContextMenu();
 
-        _profileManager.ActiveProfileChanged += _ => RebuildContextMenu();
+        _appStateService.StateChanged += _ => RebuildContextMenu();
         _profileManager.ProfilesListChanged += RebuildContextMenu;
         _keyInterceptor.MacroModeStateChanged += _ => RebuildContextMenu();
     }
 
-    /// <summary>
-    /// Reconstructs the context menu dynamically reflecting current profiles, active profile,
-    /// macro toggle state, and HUD overlay visibility mode.
-    /// </summary>
     public void RebuildContextMenu()
     {
         try
@@ -81,14 +68,22 @@ public sealed class TrayIconService : IDisposable
             // Macro Mode Enabled Toggle
             var macroToggleItem = new ToolStripMenuItem("Macro Interception Enabled", null, (s, e) =>
             {
-                _settings.IsMacroEnabled = !_settings.IsMacroEnabled;
-                _keyInterceptor.NotifyMacroState();
-                RebuildContextMenu();
+                _appStateService.SetMacroEnabled(!_appStateService.IsMacroEnabled);
             })
             {
-                Checked = _settings.IsMacroEnabled
+                Checked = _appStateService.IsMacroEnabled
             };
             menu.Items.Add(macroToggleItem);
+
+            // Per-App Auto-Profile Switching Toggle
+            var autoSwitchItem = new ToolStripMenuItem("Per-App Auto-Profile Switch", null, (s, e) =>
+            {
+                _appStateService.SetAutoProfileSwitchEnabled(!_appStateService.IsAutoProfileSwitchEnabled);
+            })
+            {
+                Checked = _appStateService.IsAutoProfileSwitchEnabled
+            };
+            menu.Items.Add(autoSwitchItem);
 
             menu.Items.Add(new ToolStripSeparator());
 
@@ -99,89 +94,97 @@ public sealed class TrayIconService : IDisposable
                 var profileId = p.Id;
                 var item = new ToolStripMenuItem(p.Name, null, (s, e) =>
                 {
-                    _profileManager.SetActiveProfile(profileId);
+                    _appStateService.SetActiveProfile(profileId);
                 })
                 {
-                    Checked = _profileManager.ActiveProfile.Id == profileId
+                    Checked = _appStateService.ActiveProfile.Id == profileId
                 };
                 profilesSubMenu.DropDownItems.Add(item);
             }
             menu.Items.Add(profilesSubMenu);
 
-            // HUD Overlay Mode Submenu
-            var hudSubMenu = new ToolStripMenuItem("HUD Overlay Mode");
+            // HUD Overlay Submenu
+            var hudSubMenu = new ToolStripMenuItem("HUD Overlay");
             foreach (HudVisibilityMode mode in Enum.GetValues(typeof(HudVisibilityMode)))
             {
                 var currentMode = mode;
                 var item = new ToolStripMenuItem(FormatHudMode(currentMode), null, (s, e) =>
                 {
-                    _settings.HudMode = currentMode;
-                    RebuildContextMenu();
+                    _appStateService.SetHudMode(currentMode);
                 })
                 {
-                    Checked = _settings.HudMode == currentMode
+                    Checked = _appStateService.HudMode == currentMode
                 };
                 hudSubMenu.DropDownItems.Add(item);
             }
+
+            hudSubMenu.DropDownItems.Add(new ToolStripSeparator());
+
+            var lockHudItem = new ToolStripMenuItem("Lock HUD Position (Click-Through)", null, (s, e) =>
+            {
+                _appStateService.SetHudLocked(!_appStateService.IsHudLocked);
+            })
+            {
+                Checked = _appStateService.IsHudLocked
+            };
+            hudSubMenu.DropDownItems.Add(lockHudItem);
+
+            var resetHudPosItem = new ToolStripMenuItem("Reset HUD to Bottom-Right", null, (s, e) =>
+            {
+                _appStateService.RequestResetHudPosition();
+            });
+            hudSubMenu.DropDownItems.Add(resetHudPosItem);
+
             menu.Items.Add(hudSubMenu);
 
             menu.Items.Add(new ToolStripSeparator());
 
             // Exit
-            menu.Items.Add(new ToolStripMenuItem($"Exit {AppConstants.AppName}", null, (s, e) => _exitAppAction()));
+            var exitItem = new ToolStripMenuItem("Exit KeyDeck", null, (s, e) => _exitAppAction());
+            menu.Items.Add(exitItem);
 
-            var oldMenu = _notifyIcon.ContextMenuStrip;
             _notifyIcon.ContextMenuStrip = menu;
-            oldMenu?.Dispose();
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[TrayIconService] Failed to rebuild context menu: {ex.Message}");
+            Trace.WriteLine($"[TrayIconService] RebuildContextMenu failed: {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// Generates a high-resolution 32x32 in-memory application icon for the system tray.
-    /// </summary>
     private static Icon GenerateTrayIcon()
     {
         try
         {
-            using var bitmap = new Bitmap(32, 32);
-            using (var g = Graphics.FromImage(bitmap))
+            using (var bmp = new Bitmap(32, 32))
             {
+                using var g = Graphics.FromImage(bmp);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.Clear(System.Drawing.Color.Transparent);
 
-                // Rounded background rectangle
                 using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(0x00, 0x78, 0xD4)))
                 {
                     g.FillEllipse(brush, 1, 1, 30, 30);
                 }
 
-                // Draw miniature 3x3 keypad grid
                 using (var dotBrush = new SolidBrush(System.Drawing.Color.White))
                 {
                     int[] coords = { 9, 15, 21 };
-                    foreach (var y in coords)
+                    foreach (var x in coords)
                     {
-                        foreach (var x in coords)
+                        foreach (var y in coords)
                         {
-                            g.FillRectangle(dotBrush, x, y, 3, 3);
+                            g.FillRectangle(dotBrush, x, y, 2, 2);
                         }
                     }
                 }
-            }
 
-            var hIcon = bitmap.GetHicon();
-            var icon = Icon.FromHandle(hIcon);
-            var cloned = (Icon)icon.Clone();
-            NativeMethods.DestroyIcon(hIcon);
-            return cloned;
+                var hIcon = bmp.GetHicon();
+                return Icon.FromHandle(hIcon);
+            }
         }
         catch (Exception ex)
         {
-            Trace.WriteLine($"[TrayIconService] Failed to generate tray icon: {ex.Message}");
+            Trace.WriteLine($"[TrayIconService] GenerateTrayIcon failed, using SystemIcons.Application: {ex.Message}");
             return SystemIcons.Application;
         }
     }
@@ -192,33 +195,18 @@ public sealed class TrayIconService : IDisposable
         {
             HudVisibilityMode.AlwaysOnWhenNumLockOff => "Always On (When Macro Active)",
             HudVisibilityMode.FadeOutOnPress => "Fade Out After Key Press",
-            HudVisibilityMode.Disabled => "Disabled",
+            HudVisibilityMode.Disabled => "Disabled (Remove HUD)",
             _ => mode.ToString()
         };
     }
 
-    /// <summary>
-    /// Disposes the tray icon and releases associated Win32 and GDI resources.
-    /// </summary>
     public void Dispose()
     {
         if (!_isDisposed)
         {
-            try
-            {
-                _notifyIcon.Visible = false;
-                _notifyIcon.ContextMenuStrip?.Dispose();
-                _notifyIcon.Icon?.Dispose();
-                _notifyIcon.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"[TrayIconService] Error during disposal: {ex.Message}");
-            }
-            finally
-            {
-                _isDisposed = true;
-            }
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
+            _isDisposed = true;
         }
     }
 }

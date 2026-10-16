@@ -8,16 +8,12 @@ namespace KeyDeck.Core;
 
 /// <summary>
 /// Extracts and caches application icons from executables as frozen WPF <see cref="BitmapImage"/> objects.
-/// Supports in-memory caching and persistent on-disk PNG caching.
+/// Supports in-memory caching and persistent on-disk PNG caching invalidated by file modification timestamp.
 /// </summary>
 public static class IconExtractor
 {
     private static readonly Dictionary<string, BitmapImage> MemoryCache = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Gets a snapshot of the current in-memory icon cache.
-    /// </summary>
-    /// <returns>A read-only dictionary of executable paths to cached bitmap images.</returns>
     public static IReadOnlyDictionary<string, BitmapImage> GetCachedIconsSnapshot()
     {
         lock (MemoryCache)
@@ -26,9 +22,6 @@ public static class IconExtractor
         }
     }
 
-    /// <summary>
-    /// Clears the in-memory icon cache.
-    /// </summary>
     public static void ClearCache()
     {
         lock (MemoryCache)
@@ -38,45 +31,26 @@ public static class IconExtractor
     }
 
     /// <summary>
-    /// Extracts the associated icon for the specified executable or fetches it from cache.
+    /// Extracts the associated icon for the specified executable into <paramref name="iconsDirectory"/>
+    /// and returns the cached PNG file path on disk, or <see langword="null"/> if extraction failed.
     /// </summary>
-    /// <param name="exePath">Path to the target executable or script.</param>
-    /// <param name="iconsDirectory">The directory path where extracted icon PNGs are cached on disk.</param>
-    /// <returns>A frozen <see cref="BitmapImage"/> if extraction succeeded; otherwise, <see langword="null"/>.</returns>
-    public static BitmapImage? ExtractOrGetCachedIcon(string? exePath, string iconsDirectory)
+    public static string? ExtractIconToCacheFile(string? exePath, string iconsDirectory)
     {
         if (string.IsNullOrWhiteSpace(exePath))
         {
             return null;
         }
 
-        var fullPath = Environment.ExpandEnvironmentVariables(exePath);
-
-        // If relative or just command name, try finding in PATH
-        if (!Path.IsPathRooted(fullPath) || !File.Exists(fullPath))
+        var fullPath = ResolveExecutablePath(exePath);
+        if (fullPath == null)
         {
-            var resolved = ResolveFromPath(fullPath);
-            if (resolved != null)
-            {
-                fullPath = resolved;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        lock (MemoryCache)
-        {
-            if (MemoryCache.TryGetValue(fullPath, out var cachedImg))
-            {
-                return cachedImg;
-            }
+            return null;
         }
 
         try
         {
-            var hash = HashHelper.ComputeSha256(fullPath);
+            var lastWriteTicks = File.GetLastWriteTimeUtc(fullPath).Ticks;
+            var hash = HashHelper.ComputeSha256($"{fullPath}|{lastWriteTicks}");
             var cachedPngPath = Path.Combine(iconsDirectory, $"{hash}.png");
 
             if (!File.Exists(cachedPngPath))
@@ -90,14 +64,53 @@ public static class IconExtractor
                 }
             }
 
-            if (File.Exists(cachedPngPath))
+            return File.Exists(cachedPngPath) ? cachedPngPath : null;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[IconExtractor] Failed to extract icon to cache file for '{exePath}': {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Extracts the associated icon for the specified executable or fetches it from cache.
+    /// </summary>
+    public static BitmapImage? ExtractOrGetCachedIcon(string? exePath, string iconsDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(exePath))
+        {
+            return null;
+        }
+
+        var fullPath = ResolveExecutablePath(exePath);
+        if (fullPath == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var lastWriteTicks = File.GetLastWriteTimeUtc(fullPath).Ticks;
+            var cacheKey = $"{fullPath}|{lastWriteTicks}";
+
+            lock (MemoryCache)
+            {
+                if (MemoryCache.TryGetValue(cacheKey, out var cachedImg))
+                {
+                    return cachedImg;
+                }
+            }
+
+            var cachedPngPath = ExtractIconToCacheFile(fullPath, iconsDirectory);
+            if (!string.IsNullOrEmpty(cachedPngPath) && File.Exists(cachedPngPath))
             {
                 var bitmapImage = LoadFrozenBitmap(cachedPngPath);
                 if (bitmapImage != null)
                 {
                     lock (MemoryCache)
                     {
-                        MemoryCache[fullPath] = bitmapImage;
+                        MemoryCache[cacheKey] = bitmapImage;
                     }
                     return bitmapImage;
                 }
@@ -111,11 +124,6 @@ public static class IconExtractor
         return null;
     }
 
-    /// <summary>
-    /// Loads an image file from disk and returns a frozen, UI-thread-independent <see cref="BitmapImage"/>.
-    /// </summary>
-    /// <param name="filePath">The file path of the image to load.</param>
-    /// <returns>A frozen <see cref="BitmapImage"/>, or <see langword="null"/> if file does not exist or fails to load.</returns>
     public static BitmapImage? LoadFrozenBitmap(string filePath)
     {
         try
@@ -144,8 +152,24 @@ public static class IconExtractor
         }
     }
 
+    private static string? ResolveExecutablePath(string rawPath)
+    {
+        var fullPath = Environment.ExpandEnvironmentVariables(rawPath.Trim());
+        if (Path.IsPathRooted(fullPath) && File.Exists(fullPath))
+        {
+            return fullPath;
+        }
+
+        return ResolveFromPath(fullPath);
+    }
+
     private static string? ResolveFromPath(string fileName)
     {
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+        {
+            return null;
+        }
+
         var pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (string.IsNullOrEmpty(pathEnv))
         {
@@ -159,10 +183,20 @@ public static class IconExtractor
         {
             foreach (var ext in extensions)
             {
-                var test = Path.Combine(p.Trim(), fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase) ? fileName : fileName + ext);
-                if (File.Exists(test))
+                try
                 {
-                    return test;
+                    var candidate = fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)
+                        ? fileName
+                        : fileName + ext;
+                    var test = Path.Combine(p.Trim(), candidate);
+                    if (File.Exists(test))
+                    {
+                        return test;
+                    }
+                }
+                catch
+                {
+                    // Ignore malformed PATH entries
                 }
             }
         }

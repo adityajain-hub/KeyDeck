@@ -13,59 +13,44 @@ namespace KeyDeck;
 
 /// <summary>
 /// Code-behind for the three-panel settings window (Profile List | Numpad Grid | Action Editor).
-/// Coordinates user interactions between child controls and the service layer via
-/// <see cref="IConfigService"/>, <see cref="IProfileManager"/>, and <see cref="IActionExecutor"/>.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class is <em>intentionally thin</em> — it contains only UI-coordination logic.
-/// Business rules live in <see cref="ProfileManager"/> and <see cref="ActionExecutor"/>.
-/// </para>
-/// <para>
-/// Closing this window hides it to the system tray rather than exiting the application,
-/// unless <see cref="App.IsExiting"/> is <see langword="true"/>.
-/// </para>
-/// </remarks>
 public partial class MainWindow : Window
 {
-    private readonly IConfigService  _configService;
-    private readonly AppSettings     _settings;
-    private readonly IProfileManager _profileManager;
-    private readonly KeyInterceptor  _keyInterceptor;
-    private readonly IActionExecutor _actionExecutor;
-    private readonly HudWindow       _hudWindow;
+    private readonly IConfigService   _configService;
+    private readonly AppSettings      _settings;
+    private readonly IProfileManager  _profileManager;
+    private readonly IKeyInterceptor  _keyInterceptor;
+    private readonly IActionExecutor  _actionExecutor;
+    private readonly HudWindow        _hudWindow;
+    private readonly IAppStateService _appStateService;
 
-    /// <summary>
-    /// Suppresses settings-control event handlers during initial population
-    /// to avoid spurious saves on startup.
-    /// </summary>
+    public TrayIconService? TrayIconService { get; set; }
+    public IForegroundAppMonitor? ForegroundAppMonitor { get; set; }
+
     private bool _isInitializing = true;
 
-    // ── Constructor ────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Constructs the window and wires all child controls to the service graph.
-    /// </summary>
     public MainWindow(
-        IConfigService  configService,
-        AppSettings     settings,
-        IProfileManager profileManager,
-        KeyInterceptor  keyInterceptor,
-        IActionExecutor actionExecutor,
-        HudWindow       hudWindow)
+        IConfigService   configService,
+        AppSettings      settings,
+        IProfileManager  profileManager,
+        IKeyInterceptor  keyInterceptor,
+        IActionExecutor  actionExecutor,
+        HudWindow        hudWindow,
+        IAppStateService? appStateService = null)
     {
         InitializeComponent();
 
-        _configService  = configService  ?? throw new ArgumentNullException(nameof(configService));
-        _settings       = settings       ?? throw new ArgumentNullException(nameof(settings));
-        _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
-        _keyInterceptor = keyInterceptor ?? throw new ArgumentNullException(nameof(keyInterceptor));
-        _actionExecutor = actionExecutor ?? throw new ArgumentNullException(nameof(actionExecutor));
-        _hudWindow      = hudWindow      ?? throw new ArgumentNullException(nameof(hudWindow));
+        _configService   = configService  ?? throw new ArgumentNullException(nameof(configService));
+        _settings        = settings       ?? throw new ArgumentNullException(nameof(settings));
+        _profileManager  = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
+        _keyInterceptor  = keyInterceptor ?? throw new ArgumentNullException(nameof(keyInterceptor));
+        _actionExecutor  = actionExecutor ?? throw new ArgumentNullException(nameof(actionExecutor));
+        _hudWindow       = hudWindow      ?? throw new ArgumentNullException(nameof(hudWindow));
+        _appStateService = appStateService ?? new KeyDeck.Core.State.AppStateService(_settings, _configService, _profileManager);
 
-        // Give the editor a reference to the interceptor (for the bypass-while-recording feature)
         EditorPanel.KeyInterceptor = _keyInterceptor;
         EditorPanel.ActionExecutor = _actionExecutor;
+        EditorPanel.ProfileManager = _profileManager;
 
         InitializeSettingsControls();
         WireEvents();
@@ -74,13 +59,6 @@ public partial class MainWindow : Window
         _isInitializing = false;
     }
 
-    // ── Initialization ─────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Populates settings controls from the current <see cref="AppSettings"/> values.
-    /// Must be called with <see cref="_isInitializing"/> set to <see langword="true"/>
-    /// to avoid triggering persistence on initial load.
-    /// </summary>
     private void InitializeSettingsControls()
     {
         NumLockModeComboBox.ItemsSource  = Enum.GetValues<NumLockMacroMode>();
@@ -94,49 +72,94 @@ public partial class MainWindow : Window
 
         StartOnBootCheckBox.IsChecked    = _settings.StartOnBoot;
         StartMinimizedCheckBox.IsChecked = _settings.StartMinimized;
-        MacroEnabledCheckBox.IsChecked   = _settings.IsMacroEnabled;
+        MacroEnabledCheckBox.IsChecked     = _settings.IsMacroEnabled;
+        AutoSwitchHeaderCheckBox.IsChecked = _settings.IsAutoProfileSwitchEnabled;
+        LockHudCheckBox.IsChecked          = _settings.IsHudLocked;
+
+        var clampedOpacity = Math.Clamp(_settings.HudOpacity, 0.20, 1.0);
+        HudOpacitySlider.Value  = clampedOpacity;
+        HudOpacityValueText.Text = $"{(int)Math.Round(clampedOpacity * 100)}%";
     }
 
     /// <summary>
-    /// Subscribes to events from child controls and the service layer.
+    /// Synchronizes MainWindow controls and HUD state when settings are changed from the system tray.
     /// </summary>
+    public void SyncSettingsUiFromExternalChange()
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            _isInitializing = true;
+
+            MacroEnabledCheckBox.IsChecked     = _settings.IsMacroEnabled;
+            AutoSwitchHeaderCheckBox.IsChecked = _settings.IsAutoProfileSwitchEnabled;
+            ProfilePanel.SetAutoSwitchChecked(_settings.IsAutoProfileSwitchEnabled);
+            HudModeComboBox.SelectedItem       = _settings.HudMode;
+            LockHudCheckBox.IsChecked          = _settings.IsHudLocked;
+
+            var clampedOpacity = Math.Clamp(_settings.HudOpacity, 0.20, 1.0);
+            HudOpacitySlider.Value   = clampedOpacity;
+            HudOpacityValueText.Text = $"{(int)Math.Round(clampedOpacity * 100)}%";
+
+            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
+            RefreshGridAndHud();
+
+            _hudWindow.SetVisibilityMode(_settings.HudMode);
+            _hudWindow.SetLockedState(_settings.IsHudLocked);
+            _hudWindow.SetHudOpacity(_settings.HudOpacity);
+
+            _isInitializing = false;
+        });
+    }
+
+    public void ResetHudPosition()
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            _hudWindow.ResetPositionToBottomRight();
+        });
+    }
+
     private void WireEvents()
     {
-        // Numpad grid → editor / profile updates
         KeyGrid.KeyCellSelected    += OnKeyCellSelected;
         KeyGrid.KeyCellActivated   += OnNumpadKeyPressed;
         KeyGrid.FileDroppedOnKey   += OnFileDroppedOnKey;
         KeyGrid.NumLockCellClicked += OnNumLockCellClicked;
 
-        // Editor saves
         EditorPanel.ActionModified += OnActionModified;
 
-        // Profile panel operations
-        ProfilePanel.ProfileSelected          += OnProfileSelected;
-        ProfilePanel.NewProfileRequested      += OnNewProfileRequested;
+        ProfilePanel.ProfileSelected           += OnProfileSelected;
+        ProfilePanel.NewProfileRequested       += OnNewProfileRequested;
         ProfilePanel.DuplicateProfileRequested += OnDuplicateProfileRequested;
-        ProfilePanel.RenameProfileRequested   += OnRenameProfileRequested;
-        ProfilePanel.DeleteProfileRequested   += OnDeleteProfileRequested;
+        ProfilePanel.RenameProfileRequested    += OnRenameProfileRequested;
+        ProfilePanel.DeleteProfileRequested    += OnDeleteProfileRequested;
+        ProfilePanel.AutoSwitchToggled         += OnProfilePanelAutoSwitchToggled;
+        ProfilePanel.ProfileLinkedAppChanged   += OnProfileLinkedAppChanged;
 
-        // Interceptor events → visual feedback
-        _keyInterceptor.NumpadKeyPressed     += OnNumpadKeyPressed;
+        _profileManager.ActiveProfileChanged += OnActiveProfileChangedFromManager;
+        _profileManager.ProfilesListChanged  += () => Dispatcher.InvokeAsync(() => EditorPanel.RefreshProfilesDropdown());
+
+        _keyInterceptor.NumpadKeyPressed      += OnNumpadKeyPressed;
         _keyInterceptor.MacroModeStateChanged += OnMacroModeStateChanged;
+
+        _hudWindow.PositionChanged += OnHudPositionChanged;
+        _hudWindow.HideRequested   += OnHudHideRequested;
+
+        _appStateService.StateChanged += OnAppStateChanged;
+        _appStateService.ResetHudPositionRequested += ResetHudPosition;
     }
 
-    /// <summary>
-    /// Pushes the initial data model into all child controls.
-    /// </summary>
     private void LoadInitialState()
     {
-        ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile);
+        ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
         KeyGrid.UpdateBindings(_profileManager.ActiveProfile, _configService.IconsDirectory);
         KeyGrid.UpdateNumLockStatus(_keyInterceptor.IsMacroModeActive);
 
-        // Pre-load the editor with the currently selected key
         var initialAction = _profileManager.GetActiveAction(KeyGrid.SelectedKeyId);
         EditorPanel.LoadAction(KeyGrid.SelectedKeyId, initialAction, _configService.IconsDirectory);
 
-        _hudWindow.UpdateProfile(_profileManager.ActiveProfile);
+        _hudWindow.ConfigureFromSettings(_settings, _configService.IconsDirectory);
+        _hudWindow.UpdateProfile(_profileManager.ActiveProfile, _configService.IconsDirectory);
         _hudWindow.UpdateMacroState(_keyInterceptor.IsMacroModeActive);
     }
 
@@ -150,13 +173,20 @@ public partial class MainWindow : Window
 
     private void OnFileDroppedOnKey(NumpadKeyId keyId, string filePath)
     {
-        // Determine action type from file attributes
         ActionType type;
         try
         {
-            type = File.GetAttributes(filePath).HasFlag(FileAttributes.Directory)
-                ? ActionType.OpenFolder
-                : ActionType.LaunchApp;
+            if (File.GetAttributes(filePath).HasFlag(FileAttributes.Directory))
+            {
+                type = ActionType.OpenFolder;
+            }
+            else
+            {
+                var ext = Path.GetExtension(filePath).ToLowerInvariant();
+                type = ext is ".ps1" or ".bat" or ".cmd"
+                    ? ActionType.RunScript
+                    : ActionType.LaunchApp;
+            }
         }
         catch (Exception ex)
         {
@@ -171,7 +201,6 @@ public partial class MainWindow : Window
             TargetPath = filePath
         };
 
-        // Pre-cache the icon so the grid can display it immediately
         if (action.Type == ActionType.LaunchApp)
         {
             IconExtractor.ExtractOrGetCachedIcon(filePath, _configService.IconsDirectory);
@@ -185,11 +214,11 @@ public partial class MainWindow : Window
 
     private void OnNumLockCellClicked()
     {
-        // Toggle the master macro switch
         _settings.IsMacroEnabled       = !_settings.IsMacroEnabled;
-        MacroEnabledCheckBox.IsChecked  = _settings.IsMacroEnabled;
+        MacroEnabledCheckBox.IsChecked = _settings.IsMacroEnabled;
         _keyInterceptor.NotifyMacroState();
         _configService.SaveSettings(_settings);
+        TrayIconService?.RebuildContextMenu();
     }
 
     // ── Editor handlers ────────────────────────────────────────────────────
@@ -202,6 +231,20 @@ public partial class MainWindow : Window
 
     // ── Profile panel handlers ─────────────────────────────────────────────
 
+    private void OnActiveProfileChangedFromManager(Profile profile)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            ProfilePanel.SetProfiles(_profileManager.Profiles, profile);
+            KeyGrid.UpdateBindings(profile, _configService.IconsDirectory);
+
+            var action = _profileManager.GetActiveAction(KeyGrid.SelectedKeyId);
+            EditorPanel.LoadAction(KeyGrid.SelectedKeyId, action, _configService.IconsDirectory);
+
+            _hudWindow.UpdateProfile(profile, _configService.IconsDirectory);
+        });
+    }
+
     private void OnProfileSelected(Profile profile)
     {
         _profileManager.SetActiveProfile(profile.Id);
@@ -210,7 +253,7 @@ public partial class MainWindow : Window
         var action = _profileManager.GetActiveAction(KeyGrid.SelectedKeyId);
         EditorPanel.LoadAction(KeyGrid.SelectedKeyId, action, _configService.IconsDirectory);
 
-        _hudWindow.UpdateProfile(profile);
+        _hudWindow.UpdateProfile(profile, _configService.IconsDirectory);
     }
 
     private void OnNewProfileRequested()
@@ -233,8 +276,8 @@ public partial class MainWindow : Window
         if (!string.IsNullOrWhiteSpace(newName))
         {
             _profileManager.RenameProfile(profile.Id, newName);
-            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile);
-            _hudWindow.UpdateProfile(_profileManager.ActiveProfile);
+            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
+            _hudWindow.UpdateProfile(_profileManager.ActiveProfile, _configService.IconsDirectory);
         }
     }
 
@@ -249,7 +292,7 @@ public partial class MainWindow : Window
         if (result == MessageBoxResult.Yes)
         {
             _profileManager.DeleteProfile(profile.Id);
-            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile);
+            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
             OnProfileSelected(_profileManager.ActiveProfile);
         }
     }
@@ -258,7 +301,6 @@ public partial class MainWindow : Window
 
     private void OnNumpadKeyPressed(NumpadKeyId keyId)
     {
-        // Visual flash on UI thread; action execution is fire-and-forget
         Dispatcher.InvokeAsync(() =>
         {
             KeyGrid.FlashKey(keyId);
@@ -278,15 +320,116 @@ public partial class MainWindow : Window
         });
     }
 
+    // ── Reactive State Synchronization ─────────────────────────────────────
+
+    private void OnAppStateChanged(AppStateChangedEventArgs e)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            _isInitializing = true;
+            try
+            {
+                switch (e.Property)
+                {
+                    case AppStateProperty.MacroInterception:
+                        MacroEnabledCheckBox.IsChecked = _appStateService.IsMacroEnabled;
+                        _keyInterceptor.NotifyMacroState();
+                        break;
+
+                    case AppStateProperty.AutoProfileSwitch:
+                        AutoSwitchHeaderCheckBox.IsChecked = _appStateService.IsAutoProfileSwitchEnabled;
+                        ProfilePanel.SetAutoSwitchChecked(_appStateService.IsAutoProfileSwitchEnabled);
+                        if (_appStateService.IsAutoProfileSwitchEnabled)
+                        {
+                            ForegroundAppMonitor?.EvaluateCurrentForegroundWindow();
+                        }
+                        break;
+
+                    case AppStateProperty.HudVisibilityMode:
+                        HudModeComboBox.SelectedItem = _appStateService.HudMode;
+                        _hudWindow.SetVisibilityMode(_appStateService.HudMode);
+                        break;
+
+                    case AppStateProperty.HudOpacity:
+                        HudOpacitySlider.Value = _appStateService.HudOpacity;
+                        HudOpacityValueText.Text = $"{(int)Math.Round(_appStateService.HudOpacity * 100)}%";
+                        _hudWindow.SetHudOpacity(_appStateService.HudOpacity);
+                        break;
+
+                    case AppStateProperty.HudLockedState:
+                        LockHudCheckBox.IsChecked = _appStateService.IsHudLocked;
+                        _hudWindow.SetLockedState(_appStateService.IsHudLocked);
+                        break;
+
+                    case AppStateProperty.Theme:
+                        ThemeComboBox.SelectedItem = _appStateService.Theme;
+                        break;
+
+                    case AppStateProperty.ActiveProfile:
+                        if (e.NewValue is Profile profile)
+                        {
+                            ProfilePanel.SetProfiles(_profileManager.Profiles, profile, _appStateService.IsAutoProfileSwitchEnabled);
+                            KeyGrid.UpdateBindings(profile, _configService.IconsDirectory);
+                            var action = _profileManager.GetActiveAction(KeyGrid.SelectedKeyId);
+                            EditorPanel.LoadAction(KeyGrid.SelectedKeyId, action, _configService.IconsDirectory);
+                            _hudWindow.UpdateProfile(profile, _configService.IconsDirectory);
+                        }
+                        break;
+                }
+            }
+            finally
+            {
+                _isInitializing = false;
+            }
+        });
+    }
+
+    // ── HUD position / close handlers ──────────────────────────────────────
+
+    private void OnHudPositionChanged(double left, double top)
+    {
+        _appStateService.SetHudPosition(left, top);
+    }
+
+    private void OnHudHideRequested()
+    {
+        _appStateService.SetHudMode(HudVisibilityMode.Disabled);
+    }
+
     // ── Settings panel handlers ────────────────────────────────────────────
+
+    private void OnAutoSwitchHeaderChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        SetAutoProfileSwitchEnabled(AutoSwitchHeaderCheckBox.IsChecked == true);
+    }
+
+    private void OnProfilePanelAutoSwitchToggled(bool isEnabled)
+    {
+        if (_isInitializing) return;
+        SetAutoProfileSwitchEnabled(isEnabled);
+    }
+
+    private void SetAutoProfileSwitchEnabled(bool isEnabled)
+    {
+        _appStateService.SetAutoProfileSwitchEnabled(isEnabled);
+    }
+
+    private void OnProfileLinkedAppChanged(Profile profile, string? linkedExe)
+    {
+        _profileManager.SetProfileLinkedApp(profile.Id, linkedExe);
+        ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
+
+        if (_settings.IsAutoProfileSwitchEnabled)
+        {
+            ForegroundAppMonitor?.EvaluateCurrentForegroundWindow();
+        }
+    }
 
     private void OnMacroEnabledChanged(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-
-        _settings.IsMacroEnabled = MacroEnabledCheckBox.IsChecked == true;
-        _keyInterceptor.NotifyMacroState();
-        _configService.SaveSettings(_settings);
+        _appStateService.SetMacroEnabled(MacroEnabledCheckBox.IsChecked == true);
     }
 
     private void OnStartOnBootClicked(object sender, RoutedEventArgs e)
@@ -320,10 +463,41 @@ public partial class MainWindow : Window
 
         if (HudModeComboBox.SelectedItem is HudVisibilityMode mode)
         {
-            _settings.HudMode = mode;
-            _hudWindow.SetVisibilityMode(mode);
-            _configService.SaveSettings(_settings);
+            _appStateService.SetHudMode(mode);
         }
+    }
+
+    private void OnHudOpacitySliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        var rounded = Math.Round(e.NewValue, 2);
+        if (HudOpacityValueText != null)
+        {
+            HudOpacityValueText.Text = $"{(int)Math.Round(rounded * 100)}%";
+        }
+
+        if (_isInitializing) return;
+        _appStateService.SetHudOpacity(rounded);
+    }
+
+    private void OnHudOpacityDownClick(object sender, RoutedEventArgs e)
+    {
+        HudOpacitySlider.Value = Math.Max(HudOpacitySlider.Minimum, Math.Round(HudOpacitySlider.Value - 0.05, 2));
+    }
+
+    private void OnHudOpacityUpClick(object sender, RoutedEventArgs e)
+    {
+        HudOpacitySlider.Value = Math.Min(HudOpacitySlider.Maximum, Math.Round(HudOpacitySlider.Value + 0.05, 2));
+    }
+
+    private void OnLockHudChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _appStateService.SetHudLocked(LockHudCheckBox.IsChecked == true);
+    }
+
+    private void OnResetHudPositionClick(object sender, RoutedEventArgs e)
+    {
+        _appStateService.RequestResetHudPosition();
     }
 
     private void OnThemeChanged(object sender, SelectionChangedEventArgs e)
@@ -332,17 +506,13 @@ public partial class MainWindow : Window
 
         if (ThemeComboBox.SelectedItem is AppTheme theme)
         {
-            _settings.Theme = theme;
+            _appStateService.SetTheme(theme);
             ((App)Application.Current).ApplyTheme(theme);
-            _configService.SaveSettings(_settings);
         }
     }
 
     // ── Window lifecycle ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Intercepts the window close button: hides to tray unless the app is actually exiting.
-    /// </summary>
     protected override void OnClosing(CancelEventArgs e)
     {
         if (!App.IsExiting)
@@ -356,14 +526,9 @@ public partial class MainWindow : Window
         }
     }
 
-    // ── Private helpers ────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Refreshes the numpad grid and HUD overlay after a binding or profile change.
-    /// </summary>
     private void RefreshGridAndHud()
     {
         KeyGrid.UpdateBindings(_profileManager.ActiveProfile, _configService.IconsDirectory);
-        _hudWindow.UpdateProfile(_profileManager.ActiveProfile);
+        _hudWindow.UpdateProfile(_profileManager.ActiveProfile, _configService.IconsDirectory);
     }
 }

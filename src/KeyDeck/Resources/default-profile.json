@@ -4,6 +4,7 @@
   "bindings": {
     "Numpad7": { "type": 1, "label": "Notepad", "targetPath": "notepad.exe" },
     "Numpad8": { "type": 1, "label": "Calculator", "targetPath": "calc.exe" },
+    "Numpad9": { "type": 3, "label": "Downloads", "targetPath": "%USERPROFILE%\\Downloads" },
     "Numpad4": { "type": 2, "label": "Google", "targetPath": "https://www.google.com" },
     "Numpad5": { "type": 2, "label": "GitHub", "targetPath": "https://github.com" },
     "Numpad6": { "type": 7, "label": "Screenshot", "systemCommand": 3 },

@@ -4,12 +4,20 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:KeyDeck.UI.Controls"
+        xmlns:converters="clr-namespace:KeyDeck.UI.Converters"
         mc:Ignorable="d"
         Title="KeyDeck — Numpad Macro Pad"
-        Height="680" Width="1050"
-        MinHeight="600" MinWidth="920"
+        Height="710" Width="1120"
+        MinHeight="620" MinWidth="960"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackgroundBrush}">
+
+    <Window.Resources>
+        <converters:ActionTypeToDisplayNameConverter x:Key="EnumDisplayConverter" />
+        <DataTemplate x:Key="EnumItemTemplate">
+            <TextBlock Text="{Binding Converter={StaticResource EnumDisplayConverter}}" />
+        </DataTemplate>
+    </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -46,8 +54,15 @@
                                Margin="8,2,0,0" />
                 </StackPanel>
 
-                <!-- Macro Master Toggle -->
+                <!-- Master Toggles -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <CheckBox x:Name="AutoSwitchHeaderCheckBox"
+                              Content="Per-App Auto-Switch"
+                              ToolTip="Automatically switch active profile when a linked application (.exe) is in the foreground"
+                              VerticalAlignment="Center"
+                              Margin="0,0,18,0"
+                              Checked="OnAutoSwitchHeaderChanged"
+                              Unchecked="OnAutoSwitchHeaderChanged" />
                     <CheckBox x:Name="MacroEnabledCheckBox"
                               Content="Enable Macro Interception"
                               IsChecked="True"
@@ -61,12 +76,12 @@
         <!-- Main Three-Panel Layout -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <!-- Left: Profile List (220px) -->
-                <ColumnDefinition Width="220" />
+                <!-- Left: Profile List (235px) -->
+                <ColumnDefinition Width="235" />
                 <!-- Center: Interactive Numpad Grid (*) -->
                 <ColumnDefinition Width="*" />
-                <!-- Right: Action Editor (340px) -->
-                <ColumnDefinition Width="340" />
+                <!-- Right: Action Editor (350px) -->
+                <ColumnDefinition Width="350" />
             </Grid.ColumnDefinitions>
 
             <controls:ProfileListPanel x:Name="ProfilePanel" Grid.Column="0" />
@@ -84,50 +99,118 @@
                 <!-- Startup -->
                 <CheckBox x:Name="StartOnBootCheckBox"
                           Content="Start on Boot"
-                          Margin="0,0,18,0"
+                          Margin="0,3,16,3"
                           VerticalAlignment="Center"
                           Click="OnStartOnBootClicked" />
 
                 <CheckBox x:Name="StartMinimizedCheckBox"
-                          Content="Start Minimized to Tray"
-                          Margin="0,0,24,0"
+                          Content="Start Minimized"
+                          Margin="0,3,20,3"
                           VerticalAlignment="Center"
                           Click="OnStartMinimizedClicked" />
 
                 <!-- NumLock Mode -->
-                <TextBlock Text="Num Lock Mode:"
-                           FontSize="11"
-                           Foreground="{DynamicResource SecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,6,0" />
-                <ComboBox x:Name="NumLockModeComboBox"
-                          Width="130"
-                          Margin="0,0,24,0"
-                          VerticalAlignment="Center"
-                          SelectionChanged="OnNumLockModeChanged" />
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="Num Lock:"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="NumLockModeComboBox"
+                              Width="148"
+                              ItemTemplate="{StaticResource EnumItemTemplate}"
+                              VerticalAlignment="Center"
+                              SelectionChanged="OnNumLockModeChanged" />
+                </StackPanel>
 
                 <!-- HUD Mode -->
-                <TextBlock Text="HUD Overlay:"
-                           FontSize="11"
-                           Foreground="{DynamicResource SecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,6,0" />
-                <ComboBox x:Name="HudModeComboBox"
-                          Width="160"
-                          Margin="0,0,16,0"
-                          VerticalAlignment="Center"
-                          SelectionChanged="OnHudModeChanged" />
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="HUD:"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="HudModeComboBox"
+                              Width="165"
+                              ItemTemplate="{StaticResource EnumItemTemplate}"
+                              VerticalAlignment="Center"
+                              SelectionChanged="OnHudModeChanged" />
+                </StackPanel>
+
+                <!-- HUD Opacity Slider (Styled with filled blue track & - / + controls) -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="HUD Opacity:"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource AccentBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <Button x:Name="HudOpacityDownButton"
+                            Content="−"
+                            Width="22"
+                            Height="22"
+                            Padding="0"
+                            FontWeight="Bold"
+                            ToolTip="Decrease HUD Opacity"
+                            Click="OnHudOpacityDownClick" />
+                    <Slider x:Name="HudOpacitySlider"
+                            Width="110"
+                            Minimum="0.20"
+                            Maximum="1.00"
+                            SmallChange="0.05"
+                            LargeChange="0.10"
+                            Value="0.85"
+                            Margin="6,0"
+                            VerticalAlignment="Center"
+                            ValueChanged="OnHudOpacitySliderChanged" />
+                    <Button x:Name="HudOpacityUpButton"
+                            Content="+"
+                            Width="22"
+                            Height="22"
+                            Padding="0"
+                            FontWeight="Bold"
+                            ToolTip="Increase HUD Opacity"
+                            Click="OnHudOpacityUpClick" />
+                    <TextBlock x:Name="HudOpacityValueText"
+                               Text="85%"
+                               Width="34"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- HUD Move / Lock Controls -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <CheckBox x:Name="LockHudCheckBox"
+                              Content="Lock HUD"
+                              IsChecked="True"
+                              ToolTip="Uncheck to drag the HUD anywhere on screen (or click ✕ on the HUD to hide it)."
+                              VerticalAlignment="Center"
+                              Margin="0,0,8,0"
+                              Checked="OnLockHudChanged"
+                              Unchecked="OnLockHudChanged" />
+                    <Button x:Name="ResetHudPositionButton"
+                            Content="Reset Pos"
+                            Padding="8,3"
+                            FontSize="11"
+                            ToolTip="Snap HUD overlay back to the bottom-right corner"
+                            Click="OnResetHudPositionClick" />
+                </StackPanel>
 
                 <!-- Theme -->
-                <TextBlock Text="Theme:"
-                           FontSize="11"
-                           Foreground="{DynamicResource SecondaryTextBrush}"
-                           VerticalAlignment="Center"
-                           Margin="0,0,6,0" />
-                <ComboBox x:Name="ThemeComboBox"
-                          Width="80"
-                          VerticalAlignment="Center"
-                          SelectionChanged="OnThemeChanged" />
+                <StackPanel Orientation="Horizontal" Margin="0,3,0,3" VerticalAlignment="Center">
+                    <TextBlock Text="Theme:"
+                               FontSize="11"
+                               Foreground="{DynamicResource SecondaryTextBrush}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="ThemeComboBox"
+                              Width="80"
+                              ItemTemplate="{StaticResource EnumItemTemplate}"
+                              VerticalAlignment="Center"
+                              SelectionChanged="OnThemeChanged" />
+                </StackPanel>
             </WrapPanel>
         </Border>
 

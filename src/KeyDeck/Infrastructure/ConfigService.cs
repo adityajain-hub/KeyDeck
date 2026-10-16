@@ -41,10 +41,13 @@ public sealed class ConfigService : IConfigService
     /// <summary>
     /// Initialises path properties and ensures all required directories exist.
     /// </summary>
-    public ConfigService()
+    /// <param name="customAppDataDirectory">Optional override for the root application data directory (useful in tests).</param>
+    /// <param name="environmentService">Optional environment abstraction for path and variable resolution.</param>
+    public ConfigService(string? customAppDataDirectory = null, KeyDeck.Core.Abstractions.IEnvironmentService? environmentService = null)
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        AppDataDirectory  = Path.Combine(appData, AppConstants.AppDataFolderName);
+        var env = environmentService ?? KeyDeck.Infrastructure.Services.EnvironmentService.Instance;
+        var appData = customAppDataDirectory ?? env.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        AppDataDirectory  = customAppDataDirectory != null ? customAppDataDirectory : Path.Combine(appData, AppConstants.AppDataFolderName);
         ProfilesDirectory = Path.Combine(AppDataDirectory, AppConstants.ProfilesFolderName);
         IconsDirectory    = Path.Combine(AppDataDirectory, AppConstants.IconsFolderName);
         SettingsFilePath  = Path.Combine(AppDataDirectory, AppConstants.SettingsFileName);
@@ -225,18 +228,36 @@ public sealed class ConfigService : IConfigService
     /// </summary>
     private List<Profile> SeedDefaultProfiles()
     {
-        var productivity = new Profile("Productivity") { Id = "default-productivity" };
-        productivity.SetAction(NumpadKeyId.Numpad7, new KeyAction { Type = ActionType.LaunchApp,   Label = "Notepad",      TargetPath = "notepad.exe" });
-        productivity.SetAction(NumpadKeyId.Numpad8, new KeyAction { Type = ActionType.LaunchApp,   Label = "Calculator",   TargetPath = "calc.exe" });
-        productivity.SetAction(NumpadKeyId.Numpad9, new KeyAction { Type = ActionType.OpenFolder,  Label = "Downloads",    TargetPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads" });
-        productivity.SetAction(NumpadKeyId.Numpad4, new KeyAction { Type = ActionType.OpenUrl,     Label = "Google",       TargetPath = "https://www.google.com" });
-        productivity.SetAction(NumpadKeyId.Numpad5, new KeyAction { Type = ActionType.OpenUrl,     Label = "GitHub",       TargetPath = "https://github.com" });
-        productivity.SetAction(NumpadKeyId.Numpad6, new KeyAction { Type = ActionType.SystemAction, Label = "Screenshot",  SystemCommand = SystemCommand.TakeScreenshot });
-        productivity.SetAction(NumpadKeyId.Numpad1, new KeyAction { Type = ActionType.SystemAction, Label = "Minimize All", SystemCommand = SystemCommand.MinimizeAll });
-        productivity.SetAction(NumpadKeyId.Numpad2, new KeyAction { Type = ActionType.SystemAction, Label = "Lock PC",     SystemCommand = SystemCommand.LockWorkstation });
-        productivity.SetAction(NumpadKeyId.Numpad3, new KeyAction { Type = ActionType.SystemAction, Label = "Empty Trash", SystemCommand = SystemCommand.EmptyRecycleBin });
-        productivity.SetAction(NumpadKeyId.Numpad0, new KeyAction { Type = ActionType.TextPaste,   Label = "Signature",    TextToPaste = "Best regards,\nSent via KeyDeck Macro Pad" });
-        productivity.SetAction(NumpadKeyId.NumpadDecimal, new KeyAction { Type = ActionType.LaunchApp, Label = "Explorer", TargetPath = "explorer.exe" });
+        Profile? productivity = null;
+        try
+        {
+            var bundledPath = Path.Combine(AppContext.BaseDirectory, "Resources", "default-profile.json");
+            if (File.Exists(bundledPath))
+            {
+                var bundledJson = File.ReadAllText(bundledPath);
+                productivity = JsonSerializer.Deserialize<Profile>(bundledJson, JsonOptions);
+            }
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[ConfigService] Could not load bundled default-profile.json, using fallback: {ex.Message}");
+        }
+
+        if (productivity == null || productivity.Bindings.Count == 0)
+        {
+            productivity = new Profile("Productivity") { Id = "default-productivity" };
+            productivity.SetAction(NumpadKeyId.Numpad7, new KeyAction { Type = ActionType.LaunchApp,    Label = "Notepad",      TargetPath = "notepad.exe" });
+            productivity.SetAction(NumpadKeyId.Numpad8, new KeyAction { Type = ActionType.LaunchApp,    Label = "Calculator",   TargetPath = "calc.exe" });
+            productivity.SetAction(NumpadKeyId.Numpad9, new KeyAction { Type = ActionType.OpenFolder,   Label = "Downloads",    TargetPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\Downloads" });
+            productivity.SetAction(NumpadKeyId.Numpad4, new KeyAction { Type = ActionType.OpenUrl,      Label = "Google",       TargetPath = "https://www.google.com" });
+            productivity.SetAction(NumpadKeyId.Numpad5, new KeyAction { Type = ActionType.OpenUrl,      Label = "GitHub",       TargetPath = "https://github.com" });
+            productivity.SetAction(NumpadKeyId.Numpad6, new KeyAction { Type = ActionType.SystemAction, Label = "Screenshot",   SystemCommand = SystemCommand.TakeScreenshot });
+            productivity.SetAction(NumpadKeyId.Numpad1, new KeyAction { Type = ActionType.SystemAction, Label = "Minimize All", SystemCommand = SystemCommand.MinimizeAll });
+            productivity.SetAction(NumpadKeyId.Numpad2, new KeyAction { Type = ActionType.SystemAction, Label = "Lock PC",      SystemCommand = SystemCommand.LockWorkstation });
+            productivity.SetAction(NumpadKeyId.Numpad3, new KeyAction { Type = ActionType.SystemAction, Label = "Empty Trash",  SystemCommand = SystemCommand.EmptyRecycleBin });
+            productivity.SetAction(NumpadKeyId.Numpad0, new KeyAction { Type = ActionType.TextPaste,    Label = "Signature",    TextToPaste = "Best regards,\nSent via KeyDeck Macro Pad" });
+            productivity.SetAction(NumpadKeyId.NumpadDecimal, new KeyAction { Type = ActionType.LaunchApp, Label = "Explorer",  TargetPath = "explorer.exe" });
+        }
 
         var media = new Profile("Media & OBS") { Id = "default-media" };
         media.SetAction(NumpadKeyId.Numpad7, new KeyAction { Type = ActionType.MediaControl, Label = "Prev Track",  MediaCommand = MediaCommand.PrevTrack });

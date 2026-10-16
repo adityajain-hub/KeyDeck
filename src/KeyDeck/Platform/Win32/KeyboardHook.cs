@@ -22,7 +22,13 @@ public sealed class KeyboardHook : IDisposable
     public Func<NumpadKeyId, bool>? ShouldInterceptFilter { get; set; }
 
     /// <summary>
-    /// Fired when an intercepted numpad key is pressed down.
+    /// Evaluates whether typematic auto-repeat WM_KEYDOWN messages should fire <see cref="KeyPressed"/>
+    /// while the key is held down (e.g., for VolumeUp / VolumeDown media actions).
+    /// </summary>
+    public Func<NumpadKeyId, bool>? AllowKeyRepeatFilter { get; set; }
+
+    /// <summary>
+    /// Fired when an intercepted numpad key is pressed down (and on repeat if allowed by <see cref="AllowKeyRepeatFilter"/>).
     /// </summary>
     public event Action<NumpadKeyId>? KeyPressed;
 
@@ -67,7 +73,10 @@ public sealed class KeyboardHook : IDisposable
         {
             NativeMethods.UnhookWindowsHookEx(_hookId);
             _hookId = IntPtr.Zero;
-            _swallowedKeys.Clear();
+            lock (_swallowedKeys)
+            {
+                _swallowedKeys.Clear();
+            }
         }
     }
 
@@ -76,26 +85,19 @@ public sealed class KeyboardHook : IDisposable
         if (nCode >= 0)
         {
             // Zero-allocation: read struct directly from the unmanaged lParam pointer.
-            // Marshal.PtrToStructure<T> copies to a new managed heap object on every keystroke;
-            // this avoids that allocation entirely (valid because Win32 guarantees lParam
-            // points to a valid KBDLLHOOKSTRUCT for the duration of the callback).
             ref readonly var hookStruct = ref Unsafe.AsRef<NativeMethods.KBDLLHOOKSTRUCT>((void*)lParam);
 
             // Rule A: Never intercept synthetic keys injected by SendInput or software.
-            // LLKHF_INJECTED (0x10)        — any injected event.
-            // LLKHF_LOWER_IL_INJECTED (0x02) — injected from a lower-integrity-level process
-            //   (a known bypass: a low-IL process injects keys pretending to be physical).
             if ((hookStruct.flags & (NativeMethods.LLKHF_INJECTED | NativeMethods.LLKHF_LOWER_IL_INJECTED)) != 0)
             {
                 return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
             }
 
-            // Rule D: Physical Num Lock key (0x90). Always pass through so Windows updates hardware state
+            // Rule D: Physical Num Lock key (0x90). Always pass through so Windows updates hardware state.
             if (hookStruct.vkCode == NativeMethods.VK_NUMLOCK)
             {
                 if (wParam == (IntPtr)NativeMethods.WM_KEYUP || wParam == (IntPtr)NativeMethods.WM_SYSKEYUP)
                 {
-                    // Delay to allow Windows to update GetKeyState toggle state.
                     Task.Delay(AppConstants.NumLockSettleDelayMs).ContinueWith(
                         _ => NumLockToggled?.Invoke(),
                         TaskScheduler.Default);
@@ -114,19 +116,23 @@ public sealed class KeyboardHook : IDisposable
                     var shouldIntercept = ShouldInterceptFilter?.Invoke(keyId) ?? false;
                     if (shouldIntercept)
                     {
+                        bool isInitialPress;
                         lock (_swallowedKeys)
                         {
-                            _swallowedKeys.Add(keyId);
+                            isInitialPress = _swallowedKeys.Add(keyId);
                         }
 
-                        // Fire key event asynchronously so hook callback returns < 1ms
-                        var pressedEvent = KeyPressed;
-                        if (pressedEvent != null)
+                        var allowRepeat = !isInitialPress && (AllowKeyRepeatFilter?.Invoke(keyId) ?? false);
+                        if (isInitialPress || allowRepeat)
                         {
-                            ThreadPool.QueueUserWorkItem(_ => pressedEvent.Invoke(keyId));
+                            var pressedEvent = KeyPressed;
+                            if (pressedEvent != null)
+                            {
+                                ThreadPool.QueueUserWorkItem(_ => pressedEvent.Invoke(keyId));
+                            }
                         }
 
-                        return (IntPtr)1; // Swallow key
+                        return (IntPtr)1; // Swallow initial press and any held auto-repeats
                     }
                 }
                 else if (isUp)

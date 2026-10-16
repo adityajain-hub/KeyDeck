@@ -1,8 +1,8 @@
-using System.IO;
+using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using KeyDeck.Core.Models;
 
 namespace KeyDeck.UI.Controls;
@@ -10,6 +10,7 @@ namespace KeyDeck.UI.Controls;
 public partial class NumpadKeyCell : UserControl
 {
     private bool _isSelected;
+    private CancellationTokenSource? _flashCts;
 
     public NumpadKeyId KeyId { get; set; }
 
@@ -62,16 +63,27 @@ public partial class NumpadKeyCell : UserControl
     {
         Dispatcher.InvokeAsync(async () =>
         {
-            var originalBg = CellBorder.Background;
-            var originalBorder = CellBorder.BorderBrush;
+            _flashCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _flashCts = cts;
 
-            CellBorder.Background = (Brush)FindResource("AccentBrush");
-            CellBorder.BorderBrush = (Brush)FindResource("AccentHoverBrush");
+            CellBorder.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
+            CellBorder.SetResourceReference(Border.BorderBrushProperty, "AccentHoverBrush");
 
-            await Task.Delay(250);
+            try
+            {
+                await Task.Delay(200, cts.Token);
+            }
+            catch (TaskCanceledException)
+            {
+                return;
+            }
 
-            CellBorder.Background = originalBg;
-            CellBorder.BorderBrush = originalBorder;
+            if (_flashCts == cts)
+            {
+                CellBorder.SetResourceReference(Border.BackgroundProperty, "CellBackgroundBrush");
+                UpdateSelectionVisual();
+            }
         });
     }
 
@@ -79,12 +91,12 @@ public partial class NumpadKeyCell : UserControl
     {
         if (_isSelected)
         {
-            CellBorder.BorderBrush = (Brush)FindResource("AccentBrush");
+            CellBorder.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
             CellBorder.BorderThickness = new Thickness(2);
         }
         else
         {
-            CellBorder.BorderBrush = (Brush)FindResource("BorderBrush");
+            CellBorder.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
             CellBorder.BorderThickness = new Thickness(1);
         }
     }
