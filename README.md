@@ -15,7 +15,8 @@
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Platform: Windows" />
   <img src="https://img.shields.io/badge/UI-WPF%20XAML-00599C?style=flat-square" alt="WPF" />
   <img src="https://img.shields.io/badge/Architecture-Clean%20%26%20Reactive-brightgreen?style=flat-square" alt="Architecture" />
-  <img src="https://img.shields.io/badge/Tests-27%20Passed%20(100%25)-success?style=flat-square" alt="Tests: 27 Passed" />
+  <img src="https://img.shields.io/badge/CodeRabbit-Reviewed%20%26%20Verified-blueviolet?style=flat-square" alt="CodeRabbit Verified" />
+  <img src="https://img.shields.io/badge/Tests-28%20Passed%20(100%25)-success?style=flat-square" alt="Tests: 28 Passed" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT" />
 </p>
 
@@ -53,7 +54,7 @@ KeyDeck is pre-built as a self-contained, standalone single-file Windows executa
 Link any profile to target application executables (e.g. `devenv.exe`, `obs64.exe`, `photoshop.exe`, `code.exe`). A low-overhead OS event hook (`SetWinEventHook`) automatically detects active window focus changes and switches the active numpad layout instantly.
 
 ### ⛓️ Multi-Action Macro Sequencing
-Chain multiple actions into an automated pipeline. Mix and match hotkey presses, application launches, text pastes, and millisecond-accurate delay intervals (`10ms` to `10,000ms`).
+Chain multiple actions into an automated pipeline. Mix and match hotkey presses, application launches, text pastes, and millisecond-accurate delay intervals (`0ms` to `60,000ms`).
 
 ### 👻 Click-Through Draggable HUD Overlay
 Stay in the zone with an unobtrusive, always-on-top transparent HUD mini-deck pinned to your screen:
@@ -151,16 +152,30 @@ For complete technical specifications, review the **[KeyDeck Architecture Guide]
 
 ---
 
+## 🛡️ CodeRabbit Security & Bug Fix Audit
+
+All 71 files across the codebase underwent full AI-driven automated review via CodeRabbit CLI, resolving critical edge-cases and vulnerabilities:
+
+- **Focus Stealing Prevention:** Added `ShowActivated="False"` and `Focusable="False"` to `HudWindow.xaml` ensuring HUD notifications never take window focus away from games, IDEs, or full-screen apps.
+- **Accidental Deletion Prevention:** Stripped `SHERB_NOCONFIRMATION` from `SHEmptyRecycleBin` in `ActionExecutor.cs` to guarantee standard Windows confirmation prompts and prevent accidental permanent file loss.
+- **Thread-Safe Tray Menu Rebuilds:** Marshaled `RebuildContextMenu()` through `Application.Current.Dispatcher` in `TrayIconService.cs`, preventing cross-thread `ContextMenuStrip` race conditions and GDI handle leaks.
+- **Macro Interception Bypass Guard:** Upgraded hotkey inputs in `ActionEditor.xaml.cs` to `GotKeyboardFocus`/`LostKeyboardFocus`, ensuring `IsTemporaryBypassEnabled` reliably deactivates if the window is closed to tray or focus changes.
+- **Debounced Save Profile Integrity:** Enforced `EditorPanel.FlushPendingSave()` before profile switches in `MainWindow.xaml.cs`, eliminating profile-switch races where pending edits could overwrite bindings in the newly selected profile.
+- **Double-Click Execution Idempotency:** Added first-click state tracking in `NumpadGrid.xaml.cs` to ensure rapid double-clicking an already selected cell cannot fire actions twice.
+- **Display Name Precision:** Constrained virtual key translation in `HotkeyRecorder.cs` to alphanumeric ranges `0x30..0x39` and `0x41..0x5A`, eliminating display distortions on function keys (F1–F11).
+
+---
+
 ## 🧪 Automated Testing
 
-KeyDeck includes a zero-dependency automated test runner in `tests/KeyDeck.Tests/` executing 27 comprehensive tests across 6 suites:
+KeyDeck includes a zero-dependency automated test runner in `tests/KeyDeck.Tests/` executing 28 comprehensive tests across 6 suites (133 assertions, 100% pass rate):
 
 ```bash
 # Run all automated tests:
 dotnet run --project tests/KeyDeck.Tests/KeyDeck.Tests.csproj -c Release --no-build
 ```
 
-- **`ActionExecutorTests`:** Unicode chunking math, extended virtual keys, profile delegation.
+- **`ActionExecutorTests`:** Unicode chunking math, extended virtual keys, verified profile switching execution.
 - **`AppStateServiceTests`:** Reactive state notifications, HUD opacity clamping, profile sync.
 - **`ConfigServiceTests`:** Atomic file writing, corrupt profile quarantine, default profile seeding.
 - **`HookAndInterceptorTests`:** Num Lock mode toggles, temporary bypass, volume repeat predicates.

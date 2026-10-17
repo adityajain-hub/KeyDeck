@@ -1,7 +1,8 @@
 ## Visual Studio & .NET
 bin/
 obj/
-publish/
+publish/*
+!publish/KeyDeck.exe
 dist/
 *.user
 *.suo
