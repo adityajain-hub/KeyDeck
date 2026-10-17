@@ -95,7 +95,9 @@ public static class HotkeyRecorder
             Key.Down => "Down",
             Key.Left => "Left",
             Key.Right => "Right",
-            _ => char.IsLetterOrDigit((char)vk) ? ((char)vk).ToString().ToUpperInvariant() : key.ToString()
+            _ => vk is (>= 0x30 and <= 0x39) or (>= 0x41 and <= 0x5A)
+                ? ((char)vk).ToString()
+                : key.ToString()
         };
     }
 }

@@ -343,8 +343,8 @@ public sealed class ActionExecutor : IActionExecutor
                 break;
 
             case SystemCommand.EmptyRecycleBin:
-                // SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND
-                NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, null, dwFlags: 7u);
+                // SHERB_NOPROGRESSUI | SHERB_NOSOUND — keep the confirmation dialog for this irreversible action.
+                NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, null, dwFlags: 0x2u | 0x4u);
                 break;
 
             case SystemCommand.TakeScreenshot:

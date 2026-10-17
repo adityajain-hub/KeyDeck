@@ -219,6 +219,8 @@ public partial class MainWindow : Window
 
     private void OnProfileSelected(Profile profile)
     {
+        // Commit pending edits to the profile they belong to before switching.
+        EditorPanel.FlushPendingSave();
         _profileManager.SetActiveProfile(profile.Id);
         KeyGrid.UpdateBindings(profile, _configService.IconsDirectory);
 

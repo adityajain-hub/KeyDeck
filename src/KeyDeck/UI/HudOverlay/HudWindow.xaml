@@ -8,6 +8,8 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
+        ShowActivated="False"
+        Focusable="False"
         ResizeMode="NoResize"
         MouseLeftButtonDown="OnWindowMouseLeftButtonDown">
 

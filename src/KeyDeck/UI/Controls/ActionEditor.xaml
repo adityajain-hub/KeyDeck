@@ -120,8 +120,8 @@
                                  IsReadOnly="True"
                                  Text="Click to record hotkey..."
                                  PreviewKeyDown="OnHotkeyPreviewKeyDown"
-                                 GotFocus="OnHotkeyGotFocus"
-                                 LostFocus="OnHotkeyLostFocus"
+                                 GotKeyboardFocus="OnHotkeyGotFocus"
+                                 LostKeyboardFocus="OnHotkeyLostFocus"
                                  Cursor="Hand" />
                         <Button Grid.Column="1" Content="Clear" Margin="6,0,0,0" Click="OnClearHotkeyClick" />
                     </Grid>
@@ -281,8 +281,8 @@
                                          IsReadOnly="True"
                                          Text="Click &amp; press shortcut..."
                                          PreviewKeyDown="OnSubActionHotkeyPreviewKeyDown"
-                                         GotFocus="OnHotkeyGotFocus"
-                                         LostFocus="OnSubActionHotkeyLostFocus"
+                                         GotKeyboardFocus="OnHotkeyGotFocus"
+                                         LostKeyboardFocus="OnSubActionHotkeyLostFocus"
                                          Cursor="Hand" />
                             </StackPanel>
 

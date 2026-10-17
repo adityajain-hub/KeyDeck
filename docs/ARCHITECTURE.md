@@ -199,14 +199,14 @@ else
 
 ### Graceful Fallbacks & Auto-Seeding
 - If `settings.json` is missing or corrupted, KeyDeck loads healthy defaults without throwing unhandled exceptions.
-- If the `profiles/` directory is empty or corrupt, `ConfigService` automatically unpacks healthy default profiles (Streaming, Productivity, Media Controls).
-- Corrupt individual profile files are skipped, logged, and quarantined, allowing remaining healthy profiles to load uninterrupted.
+- If the `profiles/` directory is empty or corrupt, `ConfigService` automatically seeds default profiles (Productivity, Media & OBS, Developer).
+- Corrupt individual profile files are skipped and logged, allowing remaining healthy profiles to load uninterrupted.
 
 ---
 
 ## 5. Scalable Action Dispatcher (`ActionExecutor`)
 
-KeyDeck executes actions asynchronously using Windows `SendInput` and `ShellExecuteEx`:
+KeyDeck executes actions asynchronously using Windows `SendInput` and `Process.Start` / `ShellExecute`:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -224,8 +224,8 @@ KeyDeck executes actions asynchronously using Windows `SendInput` and `ShellExec
 
 ### Key Execution Highlights
 1. **Extended Virtual Keys:** Arrow keys, navigation clusters (`Insert`, `Delete`, `Home`, `End`), and right-hand modifiers (`RControlKey`, `RMenu`) automatically receive `KEYEVENTF_EXTENDEDKEY` flags.
-2. **Unicode Text Injection:** Supports rapid text paste via `KEYEVENTF_UNICODE` in 64-character chunks with minimal thread sleeps (2ms) to prevent target input buffer drops.
-3. **Multi-Action Sequencing:** Supports chained composite macros with embedded customizable delay periods (`10ms` to `10,000ms`).
+2. **Unicode Text Injection:** Supports rapid text paste via `KEYEVENTF_UNICODE` in 64-character chunks with short async delays (5ms) to prevent target input buffer drops.
+3. **Multi-Action Sequencing:** Supports chained composite macros with embedded customizable delay periods (`0ms` to `60,000ms`).
 4. **Visual Key-Press Feedback:** Visual key-press firing pulses on both `NumpadGrid` and `HudWindow` are driven reactively via `KeyInterceptor.NumpadKeyPressed` and `NumpadGrid.KeyCellActivated`.
 
 ---

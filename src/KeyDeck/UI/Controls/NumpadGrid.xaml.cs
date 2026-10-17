@@ -9,6 +9,7 @@ public partial class NumpadGrid : UserControl
 {
     private readonly Dictionary<NumpadKeyId, NumpadKeyCell> _cells = new();
     private NumpadKeyId _selectedKeyId = NumpadKeyId.Numpad7;
+    private NumpadKeyId? _activatedByFirstClick;
 
     public NumpadKeyId SelectedKeyId => _selectedKeyId;
 
@@ -46,7 +47,6 @@ public partial class NumpadGrid : UserControl
         {
             var keyId = kvp.Key;
             var cell = kvp.Value;
-
             cell.KeyId = keyId;
             cell.CellClicked += OnCellClicked;
             cell.CellDoubleClicked += OnCellDoubleClicked;
@@ -60,12 +60,14 @@ public partial class NumpadGrid : UserControl
     {
         if (_selectedKeyId == cell.KeyId)
         {
+            _activatedByFirstClick = cell.KeyId;
             // Key is already selected: clicking it again executes its action immediately!
             KeyCellActivated?.Invoke(cell.KeyId);
             FlashKey(cell.KeyId);
         }
         else
         {
+            _activatedByFirstClick = null;
             SelectKey(cell.KeyId);
             KeyCellSelected?.Invoke(cell.KeyId);
         }
@@ -73,6 +75,12 @@ public partial class NumpadGrid : UserControl
 
     private void OnCellDoubleClicked(NumpadKeyCell cell)
     {
+        if (_activatedByFirstClick == cell.KeyId)
+        {
+            _activatedByFirstClick = null;
+            return;
+        }
+
         SelectKey(cell.KeyId);
         KeyCellSelected?.Invoke(cell.KeyId);
         KeyCellActivated?.Invoke(cell.KeyId);

@@ -484,7 +484,7 @@ public partial class ActionEditor : UserControl
         }
     }
 
-    private void OnSubActionHotkeyLostFocus(object sender, RoutedEventArgs e)
+    private void OnSubActionHotkeyLostFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (KeyInterceptor != null)
         {
@@ -658,7 +658,7 @@ public partial class ActionEditor : UserControl
 
     // ── Hotkey Recorder ────────────────────────────────────────────────────
 
-    private void OnHotkeyGotFocus(object sender, RoutedEventArgs e)
+    private void OnHotkeyGotFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (KeyInterceptor != null)
         {
@@ -670,7 +670,7 @@ public partial class ActionEditor : UserControl
         }
     }
 
-    private void OnHotkeyLostFocus(object sender, RoutedEventArgs e)
+    private void OnHotkeyLostFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (KeyInterceptor != null)
         {

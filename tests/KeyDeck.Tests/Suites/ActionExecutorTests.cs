@@ -73,6 +73,9 @@ public class ActionExecutorTests
             var executor = new ActionExecutor(manager);
 
             var p1 = manager.CreateProfile("Target Profile");
+            manager.SetActiveProfile(manager.Profiles.First(p => p.Id != p1.Id).Id);
+            Assert.NotEqual(p1.Id, manager.ActiveProfile.Id);
+
             var switchAction = new KeyAction
             {
                 Type = ActionType.SwitchProfile,

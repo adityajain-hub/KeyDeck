@@ -54,10 +54,21 @@ public sealed class TrayIconService : IDisposable
             {
                 return;
             }
-            RebuildContextMenu();
+            RequestRebuild();
         };
-        _profileManager.ProfilesListChanged += RebuildContextMenu;
-        _keyInterceptor.MacroModeStateChanged += _ => RebuildContextMenu();
+        _profileManager.ProfilesListChanged += RequestRebuild;
+        _keyInterceptor.MacroModeStateChanged += _ => RequestRebuild();
+    }
+
+    private void RequestRebuild()
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            dispatcher.InvokeAsync(RebuildContextMenu);
+            return;
+        }
+        RebuildContextMenu();
     }
 
     public void RebuildContextMenu()
