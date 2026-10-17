@@ -1,10 +1,13 @@
+param(
+    [string]$SourceImage = "$PSScriptRoot\..\assets\keydeck-icon-minimal.png"
+)
+
 Add-Type -AssemblyName System.Drawing
 
-$pristine = "C:\Users\DELL\.gemini\antigravity-ide\brain\836e6ff8-76ad-4ea8-8195-348d821cacd3\keydeck_minimal_icon_1792187925598.jpg"
-if (Test-Path $pristine) {
-    $imagePath = $pristine
+$imagePath = if (Test-Path $SourceImage) {
+    [System.IO.Path]::GetFullPath($SourceImage)
 } else {
-    $imagePath = [System.IO.Path]::GetFullPath("$PSScriptRoot\..\assets\keydeck-icon.png")
+    [System.IO.Path]::GetFullPath("$PSScriptRoot\..\assets\keydeck-icon.png")
 }
 
 if (-not (Test-Path $imagePath)) {

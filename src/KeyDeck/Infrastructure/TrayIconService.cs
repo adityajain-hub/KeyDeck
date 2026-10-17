@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 using KeyDeck.Infrastructure.Config;
+using KeyDeck.Platform.Win32;
 
 namespace KeyDeck.Infrastructure;
 
@@ -47,7 +48,14 @@ public sealed class TrayIconService : IDisposable
 
         RebuildContextMenu();
 
-        _appStateService.StateChanged += _ => RebuildContextMenu();
+        _appStateService.StateChanged += e =>
+        {
+            if (e.Property is AppStateProperty.HudOpacity or AppStateProperty.HudPosition or AppStateProperty.Theme)
+            {
+                return;
+            }
+            RebuildContextMenu();
+        };
         _profileManager.ProfilesListChanged += RebuildContextMenu;
         _keyInterceptor.MacroModeStateChanged += _ => RebuildContextMenu();
     }
@@ -143,7 +151,9 @@ public sealed class TrayIconService : IDisposable
             var exitItem = new ToolStripMenuItem("Exit KeyDeck", null, (s, e) => _exitAppAction());
             menu.Items.Add(exitItem);
 
+            var oldMenu = _notifyIcon.ContextMenuStrip;
             _notifyIcon.ContextMenuStrip = menu;
+            oldMenu?.Dispose();
         }
         catch (Exception ex)
         {
@@ -207,7 +217,15 @@ public sealed class TrayIconService : IDisposable
                 }
 
                 var hIcon = bmp.GetHicon();
-                return Icon.FromHandle(hIcon);
+                try
+                {
+                    using var tempIcon = Icon.FromHandle(hIcon);
+                    return (Icon)tempIcon.Clone();
+                }
+                finally
+                {
+                    NativeMethods.DestroyIcon(hIcon);
+                }
             }
         }
         catch (Exception ex)
@@ -233,6 +251,8 @@ public sealed class TrayIconService : IDisposable
         if (!_isDisposed)
         {
             _notifyIcon.Visible = false;
+            _notifyIcon.ContextMenuStrip?.Dispose();
+            _notifyIcon.Icon?.Dispose();
             _notifyIcon.Dispose();
             _isDisposed = true;
         }

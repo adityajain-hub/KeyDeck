@@ -35,23 +35,16 @@ public partial class App : Application
 
     private void OnAppStartup(object sender, StartupEventArgs e)
     {
-        var logDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KeyDeck");
-        try { System.IO.Directory.CreateDirectory(logDir); } catch { }
-        var logPath = System.IO.Path.Combine(logDir, "startup.log");
-        try { System.IO.File.AppendAllText(logPath, $"[App] OnAppStartup entered at {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}\n"); } catch { }
-
         bool isOnlyInstance = false;
         try
         {
             _singleInstanceMutex = new Mutex(initiallyOwned: true, AppConstants.SingleInstanceMutexName, out isOnlyInstance);
             _hasMutex = isOnlyInstance;
-            try { System.IO.File.AppendAllText(logPath, $"[App] Mutex created, isOnlyInstance={isOnlyInstance}\n"); } catch { }
         }
-        catch (AbandonedMutexException ex)
+        catch (AbandonedMutexException)
         {
             _hasMutex = true;
             isOnlyInstance = true;
-            try { System.IO.File.AppendAllText(logPath, $"[App] Mutex abandoned: {ex.Message}\n"); } catch { }
         }
 
         if (!_hasMutex && _singleInstanceMutex != null)
@@ -59,18 +52,15 @@ public partial class App : Application
             try
             {
                 _hasMutex = _singleInstanceMutex.WaitOne(TimeSpan.FromMilliseconds(500), true);
-                try { System.IO.File.AppendAllText(logPath, $"[App] Mutex WaitOne returned {_hasMutex}\n"); } catch { }
             }
             catch (AbandonedMutexException)
             {
                 _hasMutex = true;
-                try { System.IO.File.AppendAllText(logPath, $"[App] Mutex WaitOne abandoned\n"); } catch { }
             }
         }
 
         if (!_hasMutex)
         {
-            try { System.IO.File.AppendAllText(logPath, $"[App] Shutting down: already running.\n"); } catch { }
             MessageBox.Show(
                 $"{AppConstants.AppName} is already running in the background. Check your system tray.",
                 AppConstants.AppName,
@@ -79,8 +69,6 @@ public partial class App : Application
             Shutdown();
             return;
         }
-
-        try { System.IO.File.AppendAllText(logPath, $"[App] Mutex acquired successfully. Initializing components...\n"); } catch { }
 
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
@@ -94,12 +82,6 @@ public partial class App : Application
 
         try
         {
-            try
-            {
-                System.IO.File.AppendAllText(logPath, $"[App] Starting component initialization at {DateTime.Now}\n");
-            }
-            catch { }
-
             _configService  = new ConfigService();
             _settings       = _configService.LoadSettings();
             _profileManager = new ProfileManager(_configService, _settings);
@@ -145,7 +127,6 @@ public partial class App : Application
                 openSettingsAction: ShowMainWindow,
                 exitAppAction:      ExitApplication);
 
-            _mainWindow.TrayIconService      = _trayIconService;
             _mainWindow.ForegroundAppMonitor = _foregroundAppMonitor;
 
             _keyInterceptor.Start();
@@ -165,6 +146,9 @@ public partial class App : Application
             Trace.WriteLine($"[App] Fatal startup error: {ex}");
             try
             {
+                var logDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KeyDeck");
+                System.IO.Directory.CreateDirectory(logDir);
+                var logPath = System.IO.Path.Combine(logDir, "startup.log");
                 System.IO.File.AppendAllText(logPath, $"[Fatal startup error] {ex}\n");
             }
             catch { }

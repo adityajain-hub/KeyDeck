@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private readonly HudWindow        _hudWindow;
     private readonly IAppStateService _appStateService;
 
-    public TrayIconService? TrayIconService { get; set; }
     public IForegroundAppMonitor? ForegroundAppMonitor { get; set; }
 
     private bool _isInitializing = true;
@@ -86,36 +85,6 @@ public partial class MainWindow : Window
         var clampedOpacity = Math.Clamp(_settings.HudOpacity, 0.20, 1.0);
         HudOpacitySlider.Value  = clampedOpacity;
         HudOpacityValueText.Text = $"{(int)Math.Round(clampedOpacity * 100)}%";
-    }
-
-    /// <summary>
-    /// Synchronizes MainWindow controls and HUD state when settings are changed from the system tray.
-    /// </summary>
-    public void SyncSettingsUiFromExternalChange()
-    {
-        Dispatcher.InvokeAsync(() =>
-        {
-            _isInitializing = true;
-
-            MacroEnabledCheckBox.IsChecked     = _settings.IsMacroEnabled;
-            AutoSwitchHeaderCheckBox.IsChecked = _settings.IsAutoProfileSwitchEnabled;
-            ProfilePanel.SetAutoSwitchChecked(_settings.IsAutoProfileSwitchEnabled);
-            HudModeComboBox.SelectedItem       = _settings.HudMode;
-            LockHudCheckBox.IsChecked          = _settings.IsHudLocked;
-
-            var clampedOpacity = Math.Clamp(_settings.HudOpacity, 0.20, 1.0);
-            HudOpacitySlider.Value   = clampedOpacity;
-            HudOpacityValueText.Text = $"{(int)Math.Round(clampedOpacity * 100)}%";
-
-            ProfilePanel.SetProfiles(_profileManager.Profiles, _profileManager.ActiveProfile, _settings.IsAutoProfileSwitchEnabled);
-            RefreshGridAndHud();
-
-            _hudWindow.SetVisibilityMode(_settings.HudMode);
-            _hudWindow.SetLockedState(_settings.IsHudLocked);
-            _hudWindow.SetHudOpacity(_settings.HudOpacity);
-
-            _isInitializing = false;
-        });
     }
 
     public void ResetHudPosition()
@@ -221,11 +190,7 @@ public partial class MainWindow : Window
 
     private void OnNumLockCellClicked()
     {
-        _settings.IsMacroEnabled       = !_settings.IsMacroEnabled;
-        MacroEnabledCheckBox.IsChecked = _settings.IsMacroEnabled;
-        _keyInterceptor.NotifyMacroState();
-        _configService.SaveSettings(_settings);
-        TrayIconService?.RebuildContextMenu();
+        _appStateService.SetMacroEnabled(!_appStateService.IsMacroEnabled);
     }
 
     // ── Editor handlers ────────────────────────────────────────────────────

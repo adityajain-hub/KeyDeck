@@ -136,4 +136,46 @@ public class AppStateServiceTests
             DeleteTempDir(temp);
         }
     }
+
+    [TestMethod("Verifies state filtering ignores HudOpacity, HudPosition, and Theme for tray menu rebuild triggers")]
+    public void AppStateService_TrayFiltering_IgnoresHudAndThemeProperties()
+    {
+        var temp = CreateTempDir();
+        try
+        {
+            var config = new ConfigService(temp);
+            var settings = new AppSettings();
+            var manager = new ProfileManager(config, settings);
+            var stateService = new AppStateService(settings, config, manager);
+
+            int trayRebuildCount = 0;
+            stateService.StateChanged += e =>
+            {
+                if (e.Property is AppStateProperty.HudOpacity or AppStateProperty.HudPosition or AppStateProperty.Theme)
+                {
+                    return;
+                }
+                trayRebuildCount++;
+            };
+
+            // High-frequency UI adjustments that should NOT trigger tray rebuilds
+            stateService.SetHudOpacity(0.50);
+            stateService.SetHudPosition(100, 200);
+            stateService.SetTheme(AppTheme.Light);
+
+            Assert.Equal(0, trayRebuildCount);
+
+            // Tray-relevant state changes that SHOULD trigger tray rebuilds
+            stateService.SetMacroEnabled(!stateService.IsMacroEnabled);
+            stateService.SetAutoProfileSwitchEnabled(!stateService.IsAutoProfileSwitchEnabled);
+            stateService.SetHudMode(HudVisibilityMode.Disabled);
+            stateService.SetHudLocked(!stateService.IsHudLocked);
+
+            Assert.Equal(4, trayRebuildCount);
+        }
+        finally
+        {
+            DeleteTempDir(temp);
+        }
+    }
 }

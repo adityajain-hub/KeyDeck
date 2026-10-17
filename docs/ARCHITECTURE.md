@@ -162,14 +162,12 @@ Hardcoded calls to `Environment.GetFolderPath`, `Process.GetCurrentProcess()`, a
 ```csharp
 public interface IEnvironmentService
 {
-    string ExpandEnvironmentVariables(string path);
-    string GetFolderPath(Environment.SpecialFolder folder);
-    string MachineName { get; }
-    string UserName { get; }
     int CurrentProcessId { get; }
-    string? CurrentProcessMainModulePath { get; }
-    bool FileExists(string path);
-    bool DirectoryExists(string path);
+    string ExpandEnvironmentVariables(string name);
+    string? GetEnvironmentVariable(string variable);
+    string GetFolderPath(Environment.SpecialFolder folder);
+    bool FileExists(string? path);
+    bool DirectoryExists(string? path);
 }
 ```
 
@@ -185,9 +183,18 @@ public interface IEnvironmentService
 To prevent file corruption during system power loss, OS crashes, or write contention, `ConfigService` employs atomic temp-file swapping:
 
 ```csharp
-var tempPath = targetPath + ".tmp";
-File.WriteAllText(tempPath, json, Encoding.UTF8);
-File.Move(tempPath, targetPath, overwrite: true);
+var tmpPath = destinationPath + ".tmp";
+File.WriteAllText(tmpPath, content, Encoding.UTF8);
+
+if (File.Exists(destinationPath))
+{
+    File.Replace(tmpPath, destinationPath, destinationPath + ".bak");
+    try { File.Delete(destinationPath + ".bak"); } catch { /* non-critical */ }
+}
+else
+{
+    File.Move(tmpPath, destinationPath);
+}
 ```
 
 ### Graceful Fallbacks & Auto-Seeding
@@ -219,7 +226,7 @@ KeyDeck executes actions asynchronously using Windows `SendInput` and `ShellExec
 1. **Extended Virtual Keys:** Arrow keys, navigation clusters (`Insert`, `Delete`, `Home`, `End`), and right-hand modifiers (`RControlKey`, `RMenu`) automatically receive `KEYEVENTF_EXTENDEDKEY` flags.
 2. **Unicode Text Injection:** Supports rapid text paste via `KEYEVENTF_UNICODE` in 64-character chunks with minimal thread sleeps (2ms) to prevent target input buffer drops.
 3. **Multi-Action Sequencing:** Supports chained composite macros with embedded customizable delay periods (`10ms` to `10,000ms`).
-4. **In-Flight Action Tracking:** Displays a high-contrast visual firing pulse on both `NumpadGrid` and `HudWindow` via `ActionExecutor.ActionExecuting` events.
+4. **Visual Key-Press Feedback:** Visual key-press firing pulses on both `NumpadGrid` and `HudWindow` are driven reactively via `KeyInterceptor.NumpadKeyPressed` and `NumpadGrid.KeyCellActivated`.
 
 ---
 
