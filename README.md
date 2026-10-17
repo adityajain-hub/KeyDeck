@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Release-v2.0-blue?style=flat-square" alt="Version 2.0" />
+  <img src="https://img.shields.io/badge/Release-v2.1.0-blue?style=flat-square" alt="Version 2.1.0" />
   <img src="https://img.shields.io/badge/Executable-Single--File%20Standalone-0078D6?style=flat-square" alt="Standalone Executable" />
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white&style=flat-square" alt=".NET 8.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Platform: Windows" />
@@ -30,7 +30,7 @@
 
 KeyDeck is pre-built as a self-contained, standalone single-file Windows executable with the .NET 8 desktop runtime and native dependencies compressed inside:
 
-1. **Download:** Get the pre-built **[`publish/KeyDeck.exe`](publish/KeyDeck.exe)** directly from this repository.
+1. **Download:** Get the pre-built **[`KeyDeck.exe` (v2.1.0)](https://github.com/adityajain-hub/KeyDeck/releases/latest/download/KeyDeck.exe)** directly from the **[Latest Release](https://github.com/adityajain-hub/KeyDeck/releases/latest)** or via this repository at [`publish/KeyDeck.exe`](publish/KeyDeck.exe).
 2. **Run:** Double-click **`KeyDeck.exe`** to start immediately.
    - **No .NET runtime or SDK installation needed.**
    - Sits quietly in your Windows System Tray. Double-click the tray icon to open the configuration dashboard.
