@@ -29,3 +29,9 @@ ehthumbs.db
 
 # Internal change logs & scratch files
 CHANGES.md
+.cr-review-output.md
+
+# MCP Secrets & Local Credentials
+mcp_config.json
+.agents/mcp_config.json
+

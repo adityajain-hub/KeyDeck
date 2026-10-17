@@ -1,0 +1,18 @@
+language: "en-US"
+reviews:
+  profile: "chill" # Use "assertive" for stricter enforcement
+  path_filters:
+    - "src/**"
+    - "docs/**"
+    - "tests/**"
+    - "!publish/**"
+    - "!bin/**"
+    - "!obj/**"
+    - "!node_modules/**"
+    - "!dist/**"
+    - "!**/*.exe"
+    - "!**/*.dll"
+    - "!**/*.ico"
+  auto_review:
+    enabled: true
+    drafts: false
