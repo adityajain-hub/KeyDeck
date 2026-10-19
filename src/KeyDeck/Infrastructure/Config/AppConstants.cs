@@ -11,6 +11,9 @@ internal static class AppConstants
     /// <summary>Global mutex name used for single-instance enforcement.</summary>
     public const string SingleInstanceMutexName = "KeyDeck_SingleInstance_Mutex_2026";
 
+    /// <summary>Global event name used to signal an already-running instance to restore and show its main window.</summary>
+    public const string SingleInstanceEventName = "KeyDeck_ShowWindow_Event_2026";
+
     /// <summary>Human-readable application name used in tray tooltip, registry, and dialogs.</summary>
     public const string AppName = "KeyDeck";
 

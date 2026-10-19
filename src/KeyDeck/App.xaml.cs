@@ -6,6 +6,7 @@ using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 using KeyDeck.Infrastructure;
 using KeyDeck.Infrastructure.Config;
+using KeyDeck.Platform.Win32;
 using KeyDeck.UI.HudOverlay;
 
 namespace KeyDeck;
@@ -16,6 +17,8 @@ namespace KeyDeck;
 public partial class App : Application
 {
     private static Mutex? _singleInstanceMutex;
+    private static EventWaitHandle? _showWindowEvent;
+    private static RegisteredWaitHandle? _registeredWaitHandle;
 
     private IConfigService?        _configService;
     private AppSettings?           _settings;
@@ -61,13 +64,44 @@ public partial class App : Application
 
         if (!_hasMutex)
         {
-            MessageBox.Show(
-                $"{AppConstants.AppName} is already running in the background. Check your system tray.",
-                AppConstants.AppName,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            Shutdown();
+            // Another instance is already running in the background.
+            // Signal the running instance to restore and bring its main window to the foreground.
+            try
+            {
+                if (EventWaitHandle.TryOpenExisting(AppConstants.SingleInstanceEventName, out var signalHandle))
+                {
+                    signalHandle.Set();
+                    signalHandle.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[App] Failed to signal running instance: {ex.Message}");
+            }
+
+            Environment.Exit(0);
             return;
+        }
+
+        try
+        {
+            _showWindowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, AppConstants.SingleInstanceEventName);
+            _registeredWaitHandle = ThreadPool.RegisterWaitForSingleObject(
+                _showWindowEvent,
+                (state, timedOut) =>
+                {
+                    if (!IsExiting)
+                    {
+                        ShowMainWindow();
+                    }
+                },
+                null,
+                -1,
+                false);
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"[App] Failed to register single-instance show window event: {ex.Message}");
         }
 
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -167,12 +201,28 @@ public partial class App : Application
 
         Dispatcher.InvokeAsync(() =>
         {
-            _mainWindow.Show();
-            if (_mainWindow.WindowState == System.Windows.WindowState.Minimized)
+            if (!_mainWindow.IsVisible)
             {
-                _mainWindow.WindowState = System.Windows.WindowState.Normal;
+                _mainWindow.Show();
             }
+            if (_mainWindow.WindowState == WindowState.Minimized)
+            {
+                _mainWindow.WindowState = WindowState.Normal;
+            }
+
             _mainWindow.Activate();
+            _mainWindow.Focus();
+
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(_mainWindow).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                NativeMethods.ShowWindow(hwnd, NativeMethods.SW_RESTORE);
+                NativeMethods.SetForegroundWindow(hwnd);
+            }
+
+            // Topmost bump forces Windows to bring the window in front of any active application:
+            _mainWindow.Topmost = true;
+            _mainWindow.Topmost = false;
         });
     }
 
@@ -203,6 +253,8 @@ public partial class App : Application
             Trace.WriteLine($"[App] Failed to save settings on exit: {ex.Message}");
         }
 
+        _registeredWaitHandle?.Unregister(null);
+        _showWindowEvent?.Dispose();
         _foregroundAppMonitor?.Dispose();
         _keyInterceptor?.Dispose();
         _numLockMonitor?.Dispose();
@@ -216,6 +268,9 @@ public partial class App : Application
 
     private void OnAppExit(object sender, ExitEventArgs e)
     {
+        _registeredWaitHandle?.Unregister(null);
+        _showWindowEvent?.Dispose();
+
         if (_hasMutex && _singleInstanceMutex != null)
         {
             try
