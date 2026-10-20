@@ -1,0 +1,157 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:KeyDeck.UI.Avalonia.Views"
+        x:Class="KeyDeck.UI.Avalonia.Views.MainWindow"
+        Title="KeyDeck — Numpad Macro Pad"
+        Height="710" Width="1120"
+        MinHeight="620" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
+        Background="#18181B">
+    <Grid RowDefinitions="46,*,Auto">
+        <!-- TOP HEADER BAR -->
+        <Border Grid.Row="0"
+                Background="#1E1E22"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,0,0,1"
+                Padding="16,0">
+            <Grid VerticalAlignment="Center" ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⌨️ KeyDeck"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="#F4F4F5"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text=" — Turn your numpad into a stream deck"
+                               FontSize="12"
+                               Foreground="#A1A1AA"
+                               VerticalAlignment="Center"
+                               Margin="8,2,0,0" />
+                </StackPanel>
+
+                <!-- Master Toggles -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="16">
+                    <CheckBox x:Name="AutoSwitchHeaderCheckBox"
+                              Content="Per-App Auto-Switch"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="Automatically switch profile when linked application is focused"
+                              IsCheckedChanged="OnAutoSwitchChanged" />
+                    <CheckBox x:Name="MacroEnabledCheckBox"
+                              Content="Enable Macro Interception"
+                              IsChecked="True"
+                              VerticalAlignment="Center"
+                              IsCheckedChanged="OnMacroEnabledChanged" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- MAIN THREE-COLUMN WORKSPACE -->
+        <Grid Grid.Row="1" ColumnDefinitions="240,*,350">
+            <views:ProfileListControl x:Name="ProfileList" Grid.Column="0" />
+            <views:NumpadGridControl x:Name="KeyGrid" Grid.Column="1" />
+            <views:ActionEditorControl x:Name="ActionEditor" Grid.Column="2" />
+        </Grid>
+
+        <!-- BOTTOM SETTINGS BAR -->
+        <Border Grid.Row="2"
+                Background="#1E1E22"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,1,0,0"
+                Padding="16,10">
+            <WrapPanel VerticalAlignment="Center">
+                <!-- Startup -->
+                <CheckBox x:Name="StartOnBootCheckBox"
+                          Content="Start on Boot"
+                          Margin="0,3,16,3"
+                          VerticalAlignment="Center"
+                          IsCheckedChanged="OnStartOnBootChanged" />
+
+                <CheckBox x:Name="StartMinimizedCheckBox"
+                          Content="Start Minimized"
+                          Margin="0,3,20,3"
+                          VerticalAlignment="Center"
+                          IsCheckedChanged="OnStartMinimizedChanged" />
+
+                <!-- NumLock Mode -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="Num Lock:"
+                               FontSize="11"
+                               Foreground="#A1A1AA"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="NumLockModeComboBox"
+                              Width="150"
+                              VerticalAlignment="Center"
+                              SelectionChanged="OnNumLockModeChanged" />
+                </StackPanel>
+
+                <!-- HUD Mode -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="HUD:"
+                               FontSize="11"
+                               Foreground="#A1A1AA"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <ComboBox x:Name="HudModeComboBox"
+                              Width="165"
+                              VerticalAlignment="Center"
+                              SelectionChanged="OnHudModeChanged" />
+                </StackPanel>
+
+                <!-- HUD Opacity -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,18,3" VerticalAlignment="Center">
+                    <TextBlock Text="HUD Opacity:"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#0078D6"
+                               VerticalAlignment="Center"
+                               Margin="0,0,6,0" />
+                    <Button x:Name="OpacityDownBtn"
+                            Content="−"
+                            Width="22" Height="22"
+                            Padding="0"
+                            Classes="secondary"
+                            FontWeight="Bold"
+                            Click="OnOpacityDownClicked" />
+                    <Slider x:Name="HudOpacitySlider"
+                            Width="100"
+                            Minimum="0.20"
+                            Maximum="1.00"
+                            Value="0.85"
+                            Margin="6,0"
+                            VerticalAlignment="Center"
+                            PropertyChanged="OnHudOpacitySliderPropertyChanged" />
+                    <Button x:Name="OpacityUpBtn"
+                            Content="+"
+                            Width="22" Height="22"
+                            Padding="0"
+                            Classes="secondary"
+                            FontWeight="Bold"
+                            Click="OnOpacityUpClicked" />
+                    <TextBlock x:Name="HudOpacityText"
+                               Text="85%"
+                               Width="32"
+                               FontSize="11"
+                               Foreground="#A1A1AA"
+                               VerticalAlignment="Center"
+                               Margin="6,0,0,0" />
+                </StackPanel>
+
+                <!-- HUD Lock / Reset -->
+                <StackPanel Orientation="Horizontal" Margin="0,3,0,3" VerticalAlignment="Center">
+                    <CheckBox x:Name="LockHudCheckBox"
+                              Content="Lock HUD"
+                              IsChecked="True"
+                              Margin="0,0,8,0"
+                              VerticalAlignment="Center"
+                              IsCheckedChanged="OnLockHudChanged" />
+                    <Button x:Name="ResetHudBtn"
+                            Content="Reset Pos"
+                            Classes="secondary"
+                            Padding="8,3"
+                            FontSize="11"
+                            Click="OnResetHudClicked" />
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+    </Grid>
+</Window>

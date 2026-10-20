@@ -1,0 +1,161 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KeyDeck.UI.Avalonia.Views.ActionEditorControl">
+    <Border Background="#1E1E22"
+            BorderBrush="#3F3F46"
+            BorderThickness="1,0,0,0"
+            Padding="16,14">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+                <!-- Header: Key Name -->
+                <TextBlock x:Name="KeyTitleText"
+                           Text="EDITING: NUMPAD 7"
+                           FontSize="12"
+                           FontWeight="Bold"
+                           Foreground="#0078D6" />
+
+                <!-- Action Type Selection -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Action Type"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <ComboBox x:Name="ActionTypeComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="OnActionTypeChanged" />
+                </StackPanel>
+
+                <!-- Custom Label -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="Key Display Label"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <TextBox x:Name="LabelTextBox"
+                             Watermark="e.g. Launch Discord, Play/Pause..."
+                             TextChanged="OnTextChanged" />
+                </StackPanel>
+
+                <!-- Parameter Panel: LaunchApp / RunScript -->
+                <StackPanel x:Name="PathParamsPanel" Spacing="8" IsVisible="False">
+                    <StackPanel Spacing="4">
+                        <TextBlock x:Name="PathLabelText"
+                                   Text="Target Executable or File"
+                                   FontSize="11"
+                                   Foreground="#A1A1AA" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBox x:Name="PathTextBox"
+                                     Grid.Column="0"
+                                     Watermark="/usr/bin/code or ~/scripts/run.sh"
+                                     TextChanged="OnTextChanged" />
+                            <Button x:Name="BrowseFileButton"
+                                    Grid.Column="1"
+                                    Content="Browse..."
+                                    Classes="secondary"
+                                    Margin="6,0,0,0"
+                                    Click="OnBrowseFileClicked" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Command Arguments (Optional)"
+                                   FontSize="11"
+                                   Foreground="#A1A1AA" />
+                        <TextBox x:Name="ArgsTextBox"
+                                 Watermark="--arg1 value"
+                                 TextChanged="OnTextChanged" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Parameter Panel: Web URL -->
+                <StackPanel x:Name="UrlParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="Web Address (URL)"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <TextBox x:Name="UrlTextBox"
+                             Watermark="https://github.com"
+                             TextChanged="OnTextChanged" />
+                </StackPanel>
+
+                <!-- Parameter Panel: Hotkey -->
+                <StackPanel x:Name="HotkeyParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="Keyboard Shortcut Chord"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox x:Name="HotkeyDisplayBox"
+                                 Grid.Column="0"
+                                 IsReadOnly="True"
+                                 Watermark="Click Record then press shortcut" />
+                        <Button x:Name="RecordHotkeyButton"
+                                Grid.Column="1"
+                                Content="Record"
+                                Classes="secondary"
+                                Margin="6,0,0,0"
+                                Click="OnRecordHotkeyClicked" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Parameter Panel: Media Control -->
+                <StackPanel x:Name="MediaParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="Media Command"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <ComboBox x:Name="MediaCommandComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="OnSelectionChanged" />
+                </StackPanel>
+
+                <!-- Parameter Panel: System Action -->
+                <StackPanel x:Name="SystemParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="System Action"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <ComboBox x:Name="SystemCommandComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="OnSelectionChanged" />
+                </StackPanel>
+
+                <!-- Parameter Panel: Text Paste -->
+                <StackPanel x:Name="TextParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="Text Snippet to Type or Paste"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <TextBox x:Name="SnippetTextBox"
+                             AcceptsReturn="True"
+                             Height="90"
+                             TextWrapping="Wrap"
+                             Watermark="Type your macro template or signature here..."
+                             TextChanged="OnTextChanged" />
+                </StackPanel>
+
+                <!-- Parameter Panel: Switch Profile -->
+                <StackPanel x:Name="ProfileParamsPanel" Spacing="4" IsVisible="False">
+                    <TextBlock Text="Target Profile to Activate"
+                               FontSize="11"
+                               Foreground="#A1A1AA" />
+                    <ComboBox x:Name="TargetProfileComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="OnSelectionChanged" />
+                </StackPanel>
+
+                <!-- Action Execution / Verification Buttons -->
+                <Grid Margin="0,16,0,0" ColumnDefinitions="*,*">
+                    <Button x:Name="TestActionButton"
+                            Grid.Column="0"
+                            Content="⚡ Test Action"
+                            Classes="primary"
+                            Margin="0,0,4,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Click="OnTestActionClicked" />
+                    <Button x:Name="ClearBindingButton"
+                            Grid.Column="1"
+                            Content="Clear Binding"
+                            Classes="danger"
+                            Margin="4,0,0,0"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Click="OnClearBindingClicked" />
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

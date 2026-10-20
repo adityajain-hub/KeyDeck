@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:KeyDeck.Core.Models;assembly=KeyDeck.Core"
+             x:Class="KeyDeck.UI.Avalonia.Views.ProfileListControl">
+    <Border Background="#1E1E22"
+            BorderBrush="#3F3F46"
+            BorderThickness="0,0,1,0"
+            Padding="14,14,14,10">
+        <Grid RowDefinitions="Auto,*,Auto">
+            <!-- Header with Title & Add Button -->
+            <Grid Grid.Row="0" Margin="0,0,0,12" ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="PROFILES"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Foreground="#A1A1AA"
+                           VerticalAlignment="Center" />
+                <Button x:Name="AddProfileButton"
+                        Grid.Column="1"
+                        Content="＋ New"
+                        Classes="secondary"
+                        Padding="8,4"
+                        FontSize="11"
+                        Click="OnAddProfileClicked" />
+            </Grid>
+
+            <!-- Profiles ListBox -->
+            <ListBox x:Name="ProfilesListBox"
+                     Grid.Row="1"
+                     Background="Transparent"
+                     SelectionMode="Single"
+                     SelectionChanged="OnProfileSelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:Profile">
+                        <Border Background="#27272A"
+                                BorderBrush="#3F3F46"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,8"
+                                Margin="0,3">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Ellipse Grid.Column="0"
+                                         Width="8" Height="8"
+                                         Fill="#22C55E"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,8,0" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               Foreground="#F4F4F5" />
+                                    <TextBlock Text="{Binding LinkedProcessName}"
+                                               FontSize="10"
+                                               Foreground="#71717A"
+                                               IsVisible="{Binding LinkedProcessName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Profile Actions: Duplicate, Rename, Delete -->
+            <Grid Grid.Row="2" Margin="0,10,0,0" ColumnDefinitions="*,*,*">
+                <Button x:Name="DuplicateButton"
+                        Grid.Column="0"
+                        Content="Duplicate"
+                        Classes="secondary"
+                        FontSize="10"
+                        Margin="0,0,3,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Click="OnDuplicateClicked" />
+                <Button x:Name="RenameButton"
+                        Grid.Column="1"
+                        Content="Rename"
+                        Classes="secondary"
+                        FontSize="10"
+                        Margin="3,0,3,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Click="OnRenameClicked" />
+                <Button x:Name="DeleteButton"
+                        Grid.Column="2"
+                        Content="Delete"
+                        Classes="danger"
+                        FontSize="10"
+                        Margin="3,0,0,0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Click="OnDeleteClicked" />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

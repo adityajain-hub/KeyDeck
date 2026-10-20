@@ -1,0 +1,67 @@
+name: Build & Release KeyDeck
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    name: Build Windows (WPF)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore Dependencies
+        run: dotnet restore KeyDeck.sln
+
+      - name: Run Tests
+        run: dotnet run --project tests/KeyDeck.Tests/KeyDeck.Tests.csproj
+
+      - name: Publish Windows Standalone Executable
+        run: |
+          dotnet publish src/KeyDeck/KeyDeck.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish/win-x64
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDeck-Windows-x64
+          path: publish/win-x64/KeyDeck.exe
+
+  build-linux:
+    name: Build Linux (Avalonia + evdev/uinput)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore Dependencies
+        run: dotnet restore KeyDeck.sln
+
+      - name: Build Linux Engine & Avalonia App
+        run: |
+          dotnet build src/KeyDeck.Platform.Linux/KeyDeck.Platform.Linux.csproj -c Release
+          dotnet build src/KeyDeck.UI.Avalonia/KeyDeck.UI.Avalonia.csproj -c Release
+
+      - name: Package Linux Binary & Rules
+        run: |
+          bash packaging/linux/publish-linux.sh
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDeck-Linux-x64
+          path: publish/KeyDeck-Linux-x64.tar.gz

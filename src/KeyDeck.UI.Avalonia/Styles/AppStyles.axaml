@@ -1,0 +1,68 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Primary Accent Buttons -->
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="#0078D6" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="14,8" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.primary:pointerover">
+        <Setter Property="Background" Value="#1A88E1" />
+    </Style>
+
+    <!-- Secondary Outline Buttons -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="#27272A" />
+        <Setter Property="Foreground" Value="#F4F4F5" />
+        <Setter Property="BorderBrush" Value="#3F3F46" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style Selector="Button.secondary:pointerover">
+        <Setter Property="Background" Value="#323238" />
+        <Setter Property="BorderBrush" Value="#0078D6" />
+    </Style>
+
+    <!-- Danger Buttons -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="#7F1D1D" />
+        <Setter Property="Foreground" Value="#FCA5A5" />
+        <Setter Property="BorderBrush" Value="#991B1B" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Button.danger:pointerover">
+        <Setter Property="Background" Value="#991B1B" />
+    </Style>
+
+    <!-- TextBoxes -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="#18181B" />
+        <Setter Property="Foreground" Value="#F4F4F5" />
+        <Setter Property="BorderBrush" Value="#3F3F46" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="8,6" />
+    </Style>
+    <Style Selector="TextBox:focus">
+        <Setter Property="BorderBrush" Value="#0078D6" />
+    </Style>
+
+    <!-- ComboBoxes -->
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="#18181B" />
+        <Setter Property="Foreground" Value="#F4F4F5" />
+        <Setter Property="BorderBrush" Value="#3F3F46" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="8,5" />
+    </Style>
+
+</Styles>

@@ -1,0 +1,26 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KeyDeck.UI.Avalonia.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://KeyDeck.UI.Avalonia/Styles/AppStyles.axaml" />
+    </Application.Styles>
+
+    <Application.Resources>
+        <!-- Windows WPF Visual Match Tokens -->
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#18181B" />
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#1E1E22" />
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#27272A" />
+        <SolidColorBrush x:Key="CardHoverBrush" Color="#323238" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#3F3F46" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#0078D6" />
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#1A88E1" />
+        <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F4F4F5" />
+        <SolidColorBrush x:Key="SecondaryTextBrush" Color="#A1A1AA" />
+        <SolidColorBrush x:Key="ActivePillBrush" Color="#22C55E" />
+        <SolidColorBrush x:Key="ActivePillDimBrush" Color="#166534" />
+        <SolidColorBrush x:Key="WarningBrush" Color="#EAB308" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
+    </Application.Resources>
+</Application>

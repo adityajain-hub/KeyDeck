@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:KeyDeck.UI.Avalonia.Views"
+             x:Class="KeyDeck.UI.Avalonia.Views.NumpadGridControl">
+    <Grid Margin="12" RowDefinitions="*,*,*,*,*" ColumnDefinitions="*,*,*,*">
+        <!-- ROW 0: NumLock Status, Divide, Multiply, Subtract -->
+        <Border x:Name="NumLockCell"
+                Grid.Row="0" Grid.Column="0"
+                Background="#1E1E22"
+                BorderBrush="#3F3F46"
+                BorderThickness="1"
+                CornerRadius="6"
+                Margin="3"
+                Cursor="Hand"
+                ToolTip.Tip="Shows hardware Num Lock status. Macro pad activates when Num Lock is OFF.">
+            <Grid Margin="6">
+                <TextBlock Text="NumLock"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Foreground="#A1A1AA"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Top" />
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Ellipse x:Name="NumLockIndicatorDot"
+                             Width="10" Height="10"
+                             Fill="#22C55E"
+                             HorizontalAlignment="Center"
+                             Margin="0,0,0,4" />
+                    <TextBlock x:Name="NumLockStatusLabel"
+                               Text="MACROS ACTIVE"
+                               FontSize="9"
+                               FontWeight="Bold"
+                               Foreground="#22C55E"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <views:NumpadKeyCell x:Name="CellDivide" Grid.Row="0" Grid.Column="1" Legend="/" />
+        <views:NumpadKeyCell x:Name="CellMultiply" Grid.Row="0" Grid.Column="2" Legend="*" />
+        <views:NumpadKeyCell x:Name="CellSubtract" Grid.Row="0" Grid.Column="3" Legend="-" />
+
+        <!-- ROW 1: 7, 8, 9, Add (RowSpan 2) -->
+        <views:NumpadKeyCell x:Name="Cell7" Grid.Row="1" Grid.Column="0" Legend="7" />
+        <views:NumpadKeyCell x:Name="Cell8" Grid.Row="1" Grid.Column="1" Legend="8" />
+        <views:NumpadKeyCell x:Name="Cell9" Grid.Row="1" Grid.Column="2" Legend="9" />
+        <views:NumpadKeyCell x:Name="CellAdd" Grid.Row="1" Grid.Column="3" Grid.RowSpan="2" Legend="+" />
+
+        <!-- ROW 2: 4, 5, 6 -->
+        <views:NumpadKeyCell x:Name="Cell4" Grid.Row="2" Grid.Column="0" Legend="4" />
+        <views:NumpadKeyCell x:Name="Cell5" Grid.Row="2" Grid.Column="1" Legend="5" />
+        <views:NumpadKeyCell x:Name="Cell6" Grid.Row="2" Grid.Column="2" Legend="6" />
+
+        <!-- ROW 3: 1, 2, 3, Enter (RowSpan 2) -->
+        <views:NumpadKeyCell x:Name="Cell1" Grid.Row="3" Grid.Column="0" Legend="1" />
+        <views:NumpadKeyCell x:Name="Cell2" Grid.Row="3" Grid.Column="1" Legend="2" />
+        <views:NumpadKeyCell x:Name="Cell3" Grid.Row="3" Grid.Column="2" Legend="3" />
+        <views:NumpadKeyCell x:Name="CellEnter" Grid.Row="3" Grid.Column="3" Grid.RowSpan="2" Legend="Enter" />
+
+        <!-- ROW 4: 0 (ColSpan 2), Decimal -->
+        <views:NumpadKeyCell x:Name="Cell0" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Legend="0" />
+        <views:NumpadKeyCell x:Name="CellDecimal" Grid.Row="4" Grid.Column="2" Legend="." />
+    </Grid>
+</UserControl>

@@ -12,11 +12,11 @@
   <img src="https://img.shields.io/badge/Release-v2.1.0-blue?style=flat-square" alt="Version 2.1.0" />
   <img src="https://img.shields.io/badge/Executable-Single--File%20Standalone-0078D6?style=flat-square" alt="Standalone Executable" />
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white&style=flat-square" alt=".NET 8.0" />
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Platform: Windows" />
-  <img src="https://img.shields.io/badge/UI-WPF%20XAML-00599C?style=flat-square" alt="WPF" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20(Wayland%2FX11)-0078D6?style=flat-square" alt="Platform: Windows &amp; Linux" />
+  <img src="https://img.shields.io/badge/UI-WPF%20%26%20Avalonia-00599C?style=flat-square" alt="UI: WPF &amp; Avalonia" />
   <img src="https://img.shields.io/badge/Architecture-Clean%20%26%20Reactive-brightgreen?style=flat-square" alt="Architecture" />
   <img src="https://img.shields.io/badge/CodeRabbit-Reviewed%20%26%20Verified-blueviolet?style=flat-square" alt="CodeRabbit Verified" />
-  <img src="https://img.shields.io/badge/Tests-28%20Passed%20(100%25)-success?style=flat-square" alt="Tests: 28 Passed" />
+  <img src="https://img.shields.io/badge/Tests-31%20Passed%20(100%25)-success?style=flat-square" alt="Tests: 31 Passed" />
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License: MIT" />
 </p>
 
@@ -35,6 +35,12 @@ KeyDeck is pre-built as a self-contained, standalone single-file Windows executa
    - **No .NET runtime or SDK installation needed.**
    - Sits quietly in your Windows System Tray. Double-click the tray icon to open the configuration dashboard.
    - Toggle **Num Lock OFF** on your keyboard to fire macros! Turn **Num Lock ON** anytime for normal calculator typing.
+
+### 🐧 Linux Quick Start (Wayland & X11)
+KeyDeck supports Linux natively via **Avalonia UI** and kernel-level **`evdev` + `uinput`** interception:
+1. **Configure permissions (once):** `bash packaging/linux/setup-permissions.sh`
+2. **Build and run:** `dotnet run --project src/KeyDeck.UI.Avalonia/KeyDeck.UI.Avalonia.csproj`
+3. See [**Linux Documentation (`docs/LINUX.md`)**](docs/LINUX.md) for complete setup, architecture details, and packaging.
 
 ---
 
