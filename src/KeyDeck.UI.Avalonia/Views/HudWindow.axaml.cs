@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 
@@ -150,24 +151,27 @@ public partial class HudWindow : Window
 
     private void OnAppStateChanged(AppStateChangedEventArgs e)
     {
-        if (e.Property == AppStateProperty.HudOpacity && e.NewValue is double opacity)
+        Dispatcher.UIThread.Post(() =>
         {
-            Opacity = opacity;
-        }
-        else if (e.Property == AppStateProperty.HudVisibilityMode && e.NewValue is HudVisibilityMode mode)
-        {
-            IsVisible = (mode != HudVisibilityMode.Disabled);
-        }
+            if (e.Property == AppStateProperty.HudOpacity && e.NewValue is double opacity)
+            {
+                Opacity = opacity;
+            }
+            else if (e.Property == AppStateProperty.HudVisibilityMode && e.NewValue is HudVisibilityMode mode)
+            {
+                IsVisible = (mode != HudVisibilityMode.Disabled);
+            }
+        });
     }
 
     private void OnActiveProfileChanged(Profile profile)
     {
-        RefreshDisplay();
+        Dispatcher.UIThread.Post(RefreshDisplay);
     }
 
     private void OnBindingChanged(NumpadKeyId keyId, KeyAction action)
     {
-        RefreshDisplay();
+        Dispatcher.UIThread.Post(RefreshDisplay);
     }
 
     private void OnResetPosition()

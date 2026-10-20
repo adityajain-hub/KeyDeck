@@ -22,7 +22,9 @@ On modern Linux (Ubuntu 22.04+, Fedora 38+, Arch, Debian), Wayland is the defaul
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
-Ensure your user account has permission to access input devices without running as `root`.
+Ensure your user account has permission to read input devices and synthesize keystrokes without running as `root`:
+- **`99-keydeck.rules`** grants non-root write access to `/dev/uinput` (required for virtual keyboard emission).
+- **`input` group membership** grants access to read physical keyboards via `/dev/input/event*`.
 
 1. **Install udev rules**:
    ```bash
@@ -36,7 +38,7 @@ Ensure your user account has permission to access input devices without running 
    ```
    *Note: Log out and log back in for group changes to take effect.*
 
-3. Alternatively, run the automated setup script:
+3. **Alternatively, run the automated setup script** (does both automatically):
    ```bash
    bash packaging/linux/setup-permissions.sh
    ```

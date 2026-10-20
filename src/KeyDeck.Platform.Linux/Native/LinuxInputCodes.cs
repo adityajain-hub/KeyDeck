@@ -134,6 +134,7 @@ public static class LinuxInputCodes
     public const ushort KEY_DELETE     = 111;
     public const ushort KEY_LEFTMETA   = 125; // Super / Windows key
     public const ushort KEY_RIGHTMETA  = 126;
+    public const ushort KEY_SYSRQ      = 99;  // PrintScreen / SysRq
 
     // ── Media & Volume Keys ─────────────────────────────────────────────────
     public const ushort KEY_MUTE        = 113;
@@ -149,6 +150,8 @@ public static class LinuxInputCodes
     // ── ioctl requests ──────────────────────────────────────────────────────
     // _IOW('E', 0x90, int) -> 0x40044590 (EVIOCGRAB)
     public const ulong EVIOCGRAB = 0x40044590;
+    // _IOR('E', 0x02, struct input_id) -> 0x80084502 (EVIOCGID)
+    public const ulong EVIOCGID  = 0x80084502;
 
     // uinput ioctls (_IOW('U', ...))
     public const ulong UI_SET_EVBIT   = 0x40045564;
@@ -159,6 +162,15 @@ public static class LinuxInputCodes
     public const ulong UI_DEV_CREATE  = 0x5501;
     public const ulong UI_DEV_DESTROY = 0x5502;
     public const ulong UI_DEV_SETUP   = 0x405c5503;
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public struct InputId
+    {
+        public ushort BusType;
+        public ushort Vendor;
+        public ushort Product;
+        public ushort Version;
+    }
 
     /// <summary>
     /// Attempts to map a Linux evdev keycode to a <see cref="NumpadKeyId"/>.
@@ -231,6 +243,15 @@ public static class LinuxInputCodes
             0x10 => KEY_LEFTSHIFT,   // VK_SHIFT
             0x11 => KEY_LEFTCTRL,    // VK_CONTROL
             0x12 => KEY_LEFTALT,     // VK_MENU (Alt)
+            0xA0 => KEY_LEFTSHIFT,   // VK_LSHIFT
+            0xA1 => KEY_RIGHTSHIFT,  // VK_RSHIFT
+            0xA2 => KEY_LEFTCTRL,    // VK_LCONTROL
+            0xA3 => KEY_RIGHTCTRL,   // VK_RCONTROL
+            0xA4 => KEY_LEFTALT,     // VK_LMENU
+            0xA5 => KEY_RIGHTALT,    // VK_RMENU
+            0x2C => KEY_SYSRQ,       // VK_SNAPSHOT / PrintScreen
+            0x13 => KEY_PAUSE,       // VK_PAUSE
+            0x14 => KEY_CAPSLOCK,    // VK_CAPITAL
             0x5B => KEY_LEFTMETA,    // VK_LWIN
             0x5C => KEY_RIGHTMETA,   // VK_RWIN
             0x1B => KEY_ESC,
@@ -238,6 +259,18 @@ public static class LinuxInputCodes
             0x0D => KEY_ENTER,
             0x20 => KEY_SPACE,
             0x08 => KEY_BACKSPACE,
+            // OEM Punctuation
+            0xBA => 39,              // KEY_SEMICOLON
+            0xBB => KEY_EQUAL,       // KEY_EQUAL
+            0xBC => 51,              // KEY_COMMA
+            0xBD => KEY_MINUS,       // KEY_MINUS
+            0xBE => 52,              // KEY_DOT
+            0xBF => 53,              // KEY_SLASH
+            0xC0 => 41,              // KEY_GRAVE
+            0xDB => 26,              // KEY_LEFTBRACE
+            0xDC => 43,              // KEY_BACKSLASH
+            0xDD => 27,              // KEY_RIGHTBRACE
+            0xDE => 40,              // KEY_APOSTROPHE
             0x2E => KEY_DELETE,
             0x2D => KEY_INSERT,
             0x24 => KEY_HOME,

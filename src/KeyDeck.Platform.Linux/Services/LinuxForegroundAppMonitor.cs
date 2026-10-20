@@ -71,8 +71,9 @@ public sealed class LinuxForegroundAppMonitor : IForegroundAppMonitor
             var psi = new ProcessStartInfo
             {
                 FileName = "xdotool",
-                Arguments = "getwindowpid $(xdotool getactivewindow)",
+                Arguments = "getactivewindow getwindowpid",
                 RedirectStandardOutput = true,
+                RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -80,10 +81,16 @@ public sealed class LinuxForegroundAppMonitor : IForegroundAppMonitor
             using var proc = Process.Start(psi);
             if (proc != null)
             {
+                if (!proc.WaitForExit(1000))
+                {
+                    try { proc.Kill(); } catch { }
+                    return _lastProcessName;
+                }
+
                 var pidStr = proc.StandardOutput.ReadToEnd().Trim();
                 if (int.TryParse(pidStr, out var pid))
                 {
-                    var p = Process.GetProcessById(pid);
+                    using var p = Process.GetProcessById(pid);
                     return p.ProcessName;
                 }
             }

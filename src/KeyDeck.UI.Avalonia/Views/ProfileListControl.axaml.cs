@@ -1,7 +1,11 @@
 using System;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Threading;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 
@@ -40,9 +44,12 @@ public partial class ProfileListControl : UserControl
 
     private void OnActiveProfileChanged(Profile profile)
     {
-        _isInternalSelection = true;
-        ProfilesListBox.SelectedItem = profile;
-        _isInternalSelection = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _isInternalSelection = true;
+            ProfilesListBox.SelectedItem = profile;
+            _isInternalSelection = false;
+        });
     }
 
     private void OnProfileSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -76,15 +83,80 @@ public partial class ProfileListControl : UserControl
         _profileManager.SetActiveProfile(duplicate.Id);
     }
 
-    private void OnRenameClicked(object? sender, RoutedEventArgs e)
+    private async void OnRenameClicked(object? sender, RoutedEventArgs e)
     {
         if (_profileManager == null) return;
-
         var current = _profileManager.ActiveProfile;
-        // Prompt or toggle inline edit
-        var newName = $"{current.Name}*";
-        _profileManager.RenameProfile(current.Id, newName);
-        RefreshList();
+
+        var dialog = new Window
+        {
+            Title = "Rename Profile",
+            Width = 340,
+            Height = 140,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = SolidColorBrush.Parse("#1E1E22"),
+            CanResize = false
+        };
+
+        var textBox = new TextBox
+        {
+            Text = current.Name,
+            Margin = new Thickness(16, 16, 16, 12),
+            FontSize = 13
+        };
+
+        var okButton = new Button
+        {
+            Content = "Save",
+            Classes = { "primary" },
+            Margin = new Thickness(0, 0, 8, 0),
+            Width = 80,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            Classes = { "secondary" },
+            Width = 80,
+            HorizontalContentAlignment = HorizontalAlignment.Center
+        };
+
+        okButton.Click += (_, _) =>
+        {
+            var text = textBox.Text?.Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                _profileManager.RenameProfile(current.Id, text);
+                RefreshList();
+            }
+            dialog.Close();
+        };
+
+        cancelButton.Click += (_, _) => dialog.Close();
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(16, 0, 16, 16),
+            Children = { okButton, cancelButton }
+        };
+
+        dialog.Content = new StackPanel
+        {
+            Children = { textBox, buttons }
+        };
+
+        var parentWindow = VisualRoot as Window;
+        if (parentWindow != null)
+        {
+            await dialog.ShowDialog(parentWindow);
+        }
+        else
+        {
+            dialog.Show();
+        }
     }
 
     private void OnDeleteClicked(object? sender, RoutedEventArgs e)

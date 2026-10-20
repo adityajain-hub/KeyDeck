@@ -150,10 +150,12 @@ public sealed class LinuxActionExecutor : IActionExecutor
         foreach (var vk in action.HotkeyVirtualKeys)
         {
             var code = LinuxInputCodes.MapWinVkToLinuxKey(vk);
-            if (code != 0)
+            if (code == 0)
             {
-                linuxCodes.Add(code);
+                Trace.WriteLine($"[LinuxActionExecutor] Unmapped VK 0x{vk:X2}; hotkey skipped to prevent incomplete keystrokes.");
+                return;
             }
+            linuxCodes.Add(code);
         }
 
         if (linuxCodes.Count > 0)
@@ -229,8 +231,8 @@ public sealed class LinuxActionExecutor : IActionExecutor
                 break;
 
             case SystemCommand.TakeScreenshot:
-                // Emit PrintScreen or trigger spectacle/gnome-screenshot
-                await _virtualKeyboard.SendKeyStrokeAsync(LinuxInputCodes.KEY_F12).ConfigureAwait(false);
+                // Emit PrintScreen (KEY_SYSRQ = 99)
+                await _virtualKeyboard.SendKeyStrokeAsync(LinuxInputCodes.KEY_SYSRQ).ConfigureAwait(false);
                 break;
 
             case SystemCommand.MinimizeAll:
@@ -261,9 +263,12 @@ public sealed class LinuxActionExecutor : IActionExecutor
                 wlCopy.StandardInput.Close();
                 await wlCopy.WaitForExitAsync().ConfigureAwait(false);
 
-                // Simulate Ctrl + V
-                await _virtualKeyboard.SendChordAsync(new[] { LinuxInputCodes.KEY_LEFTCTRL, LinuxInputCodes.KEY_V }).ConfigureAwait(false);
-                return;
+                if (wlCopy.ExitCode == 0)
+                {
+                    // Simulate Ctrl + V
+                    await _virtualKeyboard.SendChordAsync(new[] { LinuxInputCodes.KEY_LEFTCTRL, LinuxInputCodes.KEY_V }).ConfigureAwait(false);
+                    return;
+                }
             }
         }
         catch { /* Fallback to xclip or direct typing */ }

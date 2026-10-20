@@ -142,6 +142,14 @@ public sealed class AppStateService : IAppStateService
         ResetHudPositionRequested?.Invoke();
     }
 
+    public void SaveSettings()
+    {
+        lock (_syncRoot)
+        {
+            SaveSettingsSafe();
+        }
+    }
+
     private void SaveSettingsSafe()
     {
         try

@@ -66,6 +66,14 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainWindow = new MainWindow(AppState, ProfileManager, ActionExecutor, KeyInterceptor, NumLockMonitor);
+            mainWindow.Closing += (_, e) =>
+            {
+                if (e.CloseReason == WindowCloseReason.WindowClosing)
+                {
+                    e.Cancel = true;
+                    mainWindow.Hide();
+                }
+            };
             MainWindowInstance = mainWindow;
             desktop.MainWindow = mainWindow;
 
@@ -100,6 +108,8 @@ public partial class App : Application
             exitItem.Click += (_, _) =>
             {
                 KeyInterceptor.Dispose();
+                (NumLockMonitor as IDisposable)?.Dispose();
+                (ForegroundAppMonitor as IDisposable)?.Dispose();
                 desktop.Shutdown();
             };
 

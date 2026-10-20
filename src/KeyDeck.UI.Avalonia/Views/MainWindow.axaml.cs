@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using KeyDeck.Core.Abstractions;
 using KeyDeck.Core.Models;
 
@@ -89,8 +90,11 @@ public partial class MainWindow : Window
 
     private void OnActiveProfileChanged(Profile profile)
     {
-        KeyGrid.RefreshProfile(profile);
-        ActionEditor.LoadKeyBinding(KeyGrid.SelectedKey);
+        Dispatcher.UIThread.Post(() =>
+        {
+            KeyGrid.RefreshProfile(profile);
+            ActionEditor.LoadKeyBinding(KeyGrid.SelectedKey);
+        });
     }
 
     private void OnBindingModified(NumpadKeyId keyId, KeyAction action)
@@ -100,12 +104,12 @@ public partial class MainWindow : Window
 
     private void OnNumpadKeyPressed(NumpadKeyId keyId)
     {
-        KeyGrid.FlashKey(keyId);
+        Dispatcher.UIThread.Post(() => KeyGrid.FlashKey(keyId));
     }
 
     private void OnNumLockChanged(bool isNumLockOn)
     {
-        UpdateNumLockUi();
+        Dispatcher.UIThread.Post(UpdateNumLockUi);
     }
 
     private void UpdateNumLockUi()
@@ -130,13 +134,19 @@ public partial class MainWindow : Window
     private void OnStartOnBootChanged(object? sender, RoutedEventArgs e)
     {
         if (_appState != null)
+        {
             _appState.Settings.StartOnBoot = StartOnBootCheckBox.IsChecked == true;
+            _appState.SaveSettings();
+        }
     }
 
     private void OnStartMinimizedChanged(object? sender, RoutedEventArgs e)
     {
         if (_appState != null)
+        {
             _appState.Settings.StartMinimized = StartMinimizedCheckBox.IsChecked == true;
+            _appState.SaveSettings();
+        }
     }
 
     private void OnNumLockModeChanged(object? sender, SelectionChangedEventArgs e)
@@ -144,6 +154,7 @@ public partial class MainWindow : Window
         if (_appState != null && NumLockModeComboBox.SelectedItem is NumLockMacroMode mode)
         {
             _appState.Settings.NumLockMode = mode;
+            _appState.SaveSettings();
             _keyInterceptor?.NotifyMacroState();
             UpdateNumLockUi();
         }

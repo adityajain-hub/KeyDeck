@@ -71,14 +71,26 @@ public sealed class UInputVirtualKeyboard : IDisposable
                 ff_effects_max = 0
             };
 
-            NativeLibc.ioctl(_uinputFd, LinuxInputCodes.UI_DEV_SETUP, ref setup);
-            NativeLibc.ioctl(_uinputFd, LinuxInputCodes.UI_DEV_CREATE, 0);
+            if (NativeLibc.ioctl(_uinputFd, LinuxInputCodes.UI_DEV_SETUP, ref setup) < 0 ||
+                NativeLibc.ioctl(_uinputFd, LinuxInputCodes.UI_DEV_CREATE, 0) < 0)
+            {
+                var err = Marshal.GetLastPInvokeError();
+                Trace.WriteLine($"[UInputVirtualKeyboard] Failed to register uinput device (errno={err}). Check udev permissions.");
+                NativeLibc.close(_uinputFd);
+                _uinputFd = -1;
+                return;
+            }
 
             Trace.WriteLine("[UInputVirtualKeyboard] Virtual keyboard successfully registered via /dev/uinput.");
         }
         catch (Exception ex)
         {
             Trace.WriteLine($"[UInputVirtualKeyboard] Error initializing uinput: {ex.Message}");
+            if (_uinputFd >= 0)
+            {
+                NativeLibc.close(_uinputFd);
+                _uinputFd = -1;
+            }
         }
     }
 

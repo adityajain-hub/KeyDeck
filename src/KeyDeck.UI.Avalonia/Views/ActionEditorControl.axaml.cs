@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using KeyDeck.Core.Abstractions;
@@ -203,13 +204,123 @@ public partial class ActionEditorControl : UserControl
         }
     }
 
+    private bool _isRecordingHotkey;
+
     private void OnRecordHotkeyClicked(object? sender, RoutedEventArgs e)
     {
-        // Set sample default chord
-        _currentAction.HotkeyVirtualKeys = new System.Collections.Generic.List<int> { 0x11, 0x10, 0x53 }; // Ctrl + Shift + S
-        _currentAction.HotkeyDisplay = "Ctrl + Shift + S";
-        HotkeyDisplayBox.Text = _currentAction.HotkeyDisplay;
-        SaveCurrentAction();
+        if (_isRecordingHotkey)
+        {
+            StopRecordingHotkey();
+            return;
+        }
+
+        _isRecordingHotkey = true;
+        RecordHotkeyButton.Content = "Listening...";
+        HotkeyDisplayBox.Text = "Press keys on keyboard...";
+
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel != null)
+        {
+            topLevel.KeyDown += OnRecordKeyDown;
+        }
+    }
+
+    private void StopRecordingHotkey()
+    {
+        _isRecordingHotkey = false;
+        RecordHotkeyButton.Content = "Record";
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel != null)
+        {
+            topLevel.KeyDown -= OnRecordKeyDown;
+        }
+    }
+
+    private void OnRecordKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!_isRecordingHotkey) return;
+
+        // Skip lone modifier keys
+        if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftShift or Key.RightShift or Key.LeftAlt or Key.RightAlt or Key.LWin or Key.RWin)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var vks = new System.Collections.Generic.List<int>();
+        var parts = new System.Collections.Generic.List<string>();
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            vks.Add(0x11);
+            parts.Add("Ctrl");
+        }
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        {
+            vks.Add(0x12);
+            parts.Add("Alt");
+        }
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            vks.Add(0x10);
+            parts.Add("Shift");
+        }
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Meta))
+        {
+            vks.Add(0x5B);
+            parts.Add("Win");
+        }
+
+        // Map primary key
+        int vk = 0;
+        if (e.Key >= Key.A && e.Key <= Key.Z)
+        {
+            vk = 0x41 + (int)(e.Key - Key.A);
+            parts.Add(e.Key.ToString());
+        }
+        else if (e.Key >= Key.D0 && e.Key <= Key.D9)
+        {
+            vk = 0x30 + (int)(e.Key - Key.D0);
+            parts.Add(((char)('0' + (e.Key - Key.D0))).ToString());
+        }
+        else if (e.Key >= Key.F1 && e.Key <= Key.F12)
+        {
+            vk = 0x70 + (int)(e.Key - Key.F1);
+            parts.Add(e.Key.ToString());
+        }
+        else if (e.Key == Key.Space)
+        {
+            vk = 0x20;
+            parts.Add("Space");
+        }
+        else if (e.Key == Key.Enter)
+        {
+            vk = 0x0D;
+            parts.Add("Enter");
+        }
+        else if (e.Key == Key.Tab)
+        {
+            vk = 0x09;
+            parts.Add("Tab");
+        }
+        else if (e.Key == Key.Escape)
+        {
+            vk = 0x1B;
+            parts.Add("Esc");
+        }
+
+        if (vk != 0)
+        {
+            vks.Add(vk);
+            var display = string.Join(" + ", parts);
+            _currentAction.HotkeyVirtualKeys = vks;
+            _currentAction.HotkeyDisplay = display;
+            HotkeyDisplayBox.Text = display;
+            SaveCurrentAction();
+        }
+
+        StopRecordingHotkey();
     }
 
     private async void OnTestActionClicked(object? sender, RoutedEventArgs e)

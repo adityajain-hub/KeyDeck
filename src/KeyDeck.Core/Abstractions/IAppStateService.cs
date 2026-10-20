@@ -99,4 +99,5 @@ public interface IAppStateService
     void SetTheme(AppTheme theme);
     void SetActiveProfile(string profileId);
     void RequestResetHudPosition();
+    void SaveSettings();
 }
