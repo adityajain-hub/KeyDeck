@@ -5,7 +5,7 @@ namespace KeyDeck.Infrastructure.Config;
 /// Replaces hard-coded literals scattered across the codebase so that
 /// changing a value only requires editing one location.
 /// </summary>
-internal static class AppConstants
+public static class AppConstants
 {
     // ── Application identity ────────────────────────────────────────────────
     /// <summary>Global mutex name used for single-instance enforcement.</summary>

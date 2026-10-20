@@ -33,4 +33,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\KeyDeck.Core\KeyDeck.Core.csproj" />
+  </ItemGroup>
+
 </Project>
