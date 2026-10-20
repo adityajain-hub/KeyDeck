@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\KeyDeck.Core\KeyDeck.Core.csproj" />
+    <ProjectReference Include="..\..\src\KeyDeck.Platform.Linux\KeyDeck.Platform.Linux.csproj" />
     <ProjectReference Include="..\..\src\KeyDeck\KeyDeck.csproj" />
   </ItemGroup>
 </Project>

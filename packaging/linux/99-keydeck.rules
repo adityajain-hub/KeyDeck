@@ -1,0 +1,8 @@
+# KeyDeck Linux udev rules for non-root access to /dev/uinput and /dev/input/event*
+# Place this file in /etc/udev/rules.d/99-keydeck.rules and reload udev:
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+# Ensure your user account is added to the 'input' group:
+#   sudo usermod -aG input $USER
+
+KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess"
+KERNEL=="event*", SUBSYSTEM=="input", MODE="0660", GROUP="input", TAG+="uaccess"

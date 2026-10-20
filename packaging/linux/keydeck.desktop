@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=KeyDeck
+Comment=Turn your numpad into a powerful macro stream deck
+Exec=keydeck %u
+Icon=keydeck
+Terminal=false
+Type=Application
+Categories=Utility;HardwareSettings;
+Keywords=macro;numpad;streamdeck;keydeck;automation;
+StartupWMClass=KeyDeck

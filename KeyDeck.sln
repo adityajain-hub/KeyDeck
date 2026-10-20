@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeyDeck", "src\KeyDeck\KeyD
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeyDeck.Core", "src\KeyDeck.Core\KeyDeck.Core.csproj", "{4F2E7D1A-8B3C-4E5D-9A6F-1C2D3E4F5A6B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeyDeck.Platform.Linux", "src\KeyDeck.Platform.Linux\KeyDeck.Platform.Linux.csproj", "{7A1B2C3D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KeyDeck.Tests", "tests\KeyDeck.Tests\KeyDeck.Tests.csproj", "{B9206A83-F12E-4D78-9B7C-5F11AA3C8E42}"
 EndProject
 Global
@@ -18,6 +20,10 @@ Global
 		{4F2E7D1A-8B3C-4E5D-9A6F-1C2D3E4F5A6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4F2E7D1A-8B3C-4E5D-9A6F-1C2D3E4F5A6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4F2E7D1A-8B3C-4E5D-9A6F-1C2D3E4F5A6B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A1B2C3D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A1B2C3D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A1B2C3D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A1B2C3D-4E5F-6A7B-8C9D-0E1F2A3B4C5D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3E3C5796-0E6D-46EB-9F43-853BEAC05C94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3E3C5796-0E6D-46EB-9F43-853BEAC05C94}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E3C5796-0E6D-46EB-9F43-853BEAC05C94}.Release|Any CPU.ActiveCfg = Release|Any CPU
