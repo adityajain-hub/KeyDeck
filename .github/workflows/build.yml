@@ -48,8 +48,8 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore Dependencies
-        run: dotnet restore KeyDeck.sln
+      - name: Restore Linux Dependencies
+        run: dotnet restore src/KeyDeck.UI.Avalonia/KeyDeck.UI.Avalonia.csproj
 
       - name: Build Linux Engine & Avalonia App
         run: |
@@ -58,6 +58,7 @@ jobs:
 
       - name: Package Linux Binary & Rules
         run: |
+          chmod +x packaging/linux/publish-linux.sh
           bash packaging/linux/publish-linux.sh
 
       - name: Upload Linux Artifact

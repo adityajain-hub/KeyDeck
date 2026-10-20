@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Allow cross-platform restore and evaluation of Windows-targeted projects on Linux/macOS -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>
